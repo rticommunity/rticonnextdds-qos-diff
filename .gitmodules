@@ -1,0 +1,3 @@
+[submodule "rticonnextdds-xml-output-utility"]
+	path = rticonnextdds-xml-output-utility
+	url = https://github.com/rticommunity/rticonnextdds-xml-output-utility
