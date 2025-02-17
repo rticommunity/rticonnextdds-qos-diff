@@ -64,10 +64,11 @@ if os.path.exists(args.qos_file) == False:  # TODO: Add smarts in case a default
     sys.exit(1)
 
 if args.commit != '':
-    # TODO
     repo_path = get_git_repo_root(args.qos_file)
     # Get the Base Qos file from the Git commit
     subprocess.run(['git', '-C', repo_path, 'show', f'{args.commit}:{os.path.relpath(args.qos_file, repo_path)}'], stdout=open(base_qos, 'w'))
+    # Save the current Qos file as the Diff Qos file
+    shutil.copy(args.qos_file, diff_qos)
 elif args.diff_file != '':
     shutil.copy(args.qos_file, base_qos)
     shutil.copy(args.diff_file, diff_qos)
@@ -102,6 +103,8 @@ tags = [
 error_count = 0
 
 log_file_path = os.path.join(args.out_dir, 'log.txt')
+
+# TODO: What if a profile is not found in one of the files?
 
 print()
 try:
@@ -166,10 +169,4 @@ except BreakLoop:
 if error_count > 0:
     print()
 
-print("{0} errors detected.\n".format(error_count))
-# TODO
-# if args.diff_break:
-#     print("No errors detected!\n")
-# else:
-#     print("Errors Detected:")
-#     subprocess.run(['grep', '-l', '---', '-r', '--exclude=*domain_participant_qos.txt', args.out_dir])
+print(f"{error_count} errors detected.\n")
