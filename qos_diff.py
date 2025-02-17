@@ -6,6 +6,9 @@ import shutil
 import subprocess
 # import xml.etree.ElementTree as ET
 
+class BreakLoop(Exception):
+    pass
+
 def get_git_repo_root(file_path):
     try:
         repo_root = subprocess.check_output(
@@ -43,7 +46,7 @@ parser.add_argument('--diff_file', type=str, default='', help='Specify a Qos fil
 parser.add_argument('--commit', type=str, default='', help='Specify the Git commit hash of the base file.')
 parser.add_argument('--profile', type=str, default='', help='Specify the Qos profile in the format: Library::Profile. Otherwise all profiles will be diffed.')
 parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.')
-parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is $PWD/output.')
+parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${PWD}/output.')
 parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
 parser.add_argument('--diff_break', action='store_true', help='Break on diff failure.')
 args = parser.parse_args()
@@ -60,7 +63,7 @@ base_qos = os.path.join(args.out_dir, 'base_qos.xml')
 diff_qos = os.path.join(args.out_dir, 'diff_qos.xml')
 
 # Check if the Qos file exists
-if os.path.exists(args.qos_file) == False:
+if os.path.exists(args.qos_file) == False:  # TODO: Add smarts in case a default filename is provided.  Must also be in PWD
     print(f"Error: {args.qos_file} does not exist.")
     sys.exit(1)
 
@@ -100,61 +103,73 @@ tags = [
     'topic_qos'
 ]
 
-for qos_profile in qos_profiles:
-    # TODO: Am I sure I want to use qos_profile[1] as the directory name?
-    profile_dir = os.path.join(args.out_dir, qos_profile[1])
-    os.makedirs(profile_dir)
-    for tag in tags:
-        # Generate combined XML Qos file
-        print('Path: ', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'), '\n')
-        subprocess.run([
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
-            '-qosFile', base_qos,
-            '-outputFile', os.path.join(profile_dir, f'{tag}_1.xml'),
-            '-qosProfile', f"{qos_profile[0]}",
-            '-qosTag', tag
-        ])
+error_count = 0
 
-        subprocess.run([
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
-            '-qosFile', diff_qos,
-            '-outputFile', os.path.join(profile_dir, f'{tag}_2.xml'),
-            '-qosProfile', f"{qos_profile[1]}",
-            '-qosTag', tag
-        ])
+log_file_path = os.path.join(args.out_dir, 'log.txt')
 
-        # -s = Identify identical files, -U unified context
-        with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
-            subprocess.run([
-                'diff', '-s', '-U', '1',
-                os.path.join(profile_dir, f'{tag}_1.xml'),
-                os.path.join(profile_dir, f'{tag}_2.xml')
-            ], stdout=diff_file)
+print()
+try:
+    for qos_profile in qos_profiles:
+        # TODO: Am I sure I want to use qos_profile[1] as the directory name?
+        profile_dir = os.path.join(args.out_dir, qos_profile[1])
+        os.makedirs(profile_dir)
+        for tag in tags:
+            # Generate combined XML Qos file
+            with open(log_file_path, 'a') as log_file:
+                subprocess.run([
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
+                    '-qosFile', base_qos,
+                    '-outputFile', os.path.join(profile_dir, f'{tag}_1.xml'),
+                    '-qosProfile', f"{qos_profile[0]}",
+                    '-qosTag', tag
+                ], stdout=log_file, stderr=log_file)
 
-        # Remove generated Qos files (may want to keep these pending use case)
-        if args.rm:
-            os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
-            os.remove(os.path.join(profile_dir, f'{tag}_2.xml'))
+                subprocess.run([
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
+                    '-qosFile', diff_qos,
+                    '-outputFile', os.path.join(profile_dir, f'{tag}_2.xml'),
+                    '-qosProfile', f"{qos_profile[1]}",
+                    '-qosTag', tag
+                ], stdout=log_file, stderr=log_file)
 
-        if tag == 'domain_participant_qos':
-            # LINE_COUNT will be 7 if process_id is only difference
-            with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
-                line_count = sum(1 for _ in f)
-            if line_count != 7:  # TODO: Decide what to do here.
-                print(f"\nQos Failure | Profile: {qos_profile[1]} | Entity: {tag}\n")
-                if args.diff_break:
-                    #TODO
-                    sys.exit(1)
-        else:
-            # If "identical" is not found, there is a difference
-            with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
-                if 'identical' not in f.read():
-                    print(f"\nQos Failure | Profile: {qos_profile[1]} | Entity: {tag}\n")
-                    if args.diff_break:
-                        #TODO
-                        sys.exit(1)
-        print()
+            # -s = Identify identical files, -U unified context
+            with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
+                subprocess.run([
+                    'diff', '-s', '-U', '1',
+                    os.path.join(profile_dir, f'{tag}_1.xml'),
+                    os.path.join(profile_dir, f'{tag}_2.xml')
+                ], stdout=diff_file)
 
+            # Remove generated Qos files (may want to keep these pending use case)
+            if args.rm:
+                os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
+                os.remove(os.path.join(profile_dir, f'{tag}_2.xml'))
+
+            if tag == 'domain_participant_qos':
+                # LINE_COUNT will be 7 if process_id is only difference
+                with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
+                    line_count = sum(1 for _ in f)
+                    if line_count != 7:  # TODO: Decide what to do here.
+                        print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
+                        error_count += 1
+                        if(args.diff_break):
+                            raise BreakLoop
+            else:
+                # If "identical" is not found, there is a difference
+                with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
+                    if 'identical' not in f.read():
+                        print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
+                        error_count += 1
+                        if(args.diff_break):
+                            raise BreakLoop
+
+except BreakLoop:
+    pass
+
+if error_count > 0:
+    print()
+
+print("{0} errors detected.\n".format(error_count))
 # TODO
 # if args.diff_break:
 #     print("No errors detected!\n")
