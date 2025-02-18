@@ -143,27 +143,24 @@ try:
 
                 diff = difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{tag}_1.xml', tofile=f'{tag}_2.xml', lineterm='')
 
-                with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
+                with open(os.path.join(profile_dir, f'{tag}.txt'), 'w+') as diff_file:
                     diff_file.writelines(diff)
-
-                if tag == 'domain_participant_qos':
-                    # LINE_COUNT will be 8 if process_id is only difference
-                    with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
-                        line_count = sum(1 for _ in f)
+                    if tag == 'domain_participant_qos':
+                        # LINE_COUNT will be 8 if process_id is only difference
+                        line_count = sum(1 for _ in diff_file)
                         if line_count != 8:
                             print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
                             error_count += 1
                             if(args.diff_break):
                                 raise BreakLoop
-                else:
-                    # If "identical" is not found, there is a difference
-                    with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
-                        if f.read().strip():
+                    else:
+                        # If "identical" is not found, there is a difference
+                        if diff_file.read().strip():
                             print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
                             error_count += 1
                             if args.diff_break:
                                 raise BreakLoop
-                            
+
                 # Remove generated Qos files (may want to keep these pending use case)
                 if args.rm:
                     os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
