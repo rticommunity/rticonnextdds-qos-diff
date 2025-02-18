@@ -5,6 +5,10 @@ import argparse
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
+import difflib
+
+RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    'rticonnextdds-xml-output-utility/build/rtixmloutpututility')
 
 class BreakLoop(Exception):
     pass
@@ -116,7 +120,7 @@ try:
             for tag in tags:
                 # Generate combined XML Qos file
                 subprocess.run([
-                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
+                    RTI_XML_UTILITY_PATH,
                     '-qosFile', base_qos,
                     '-outputFile', os.path.join(profile_dir, f'{tag}_1.xml'),
                     '-qosProfile', f"{qos_profile[0]}",
@@ -124,7 +128,7 @@ try:
                 ], stdout=log_file, stderr=log_file)
 
                 subprocess.run([
-                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rticonnextdds-xml-output-utility/build/rtixmloutpututility'),
+                    RTI_XML_UTILITY_PATH,
                     '-qosFile', diff_qos,
                     '-outputFile', os.path.join(profile_dir, f'{tag}_2.xml'),
                     '-qosProfile', f"{qos_profile[1]}",
@@ -133,23 +137,20 @@ try:
 
                 # -s = Identify identical files, -U unified context
                 # TODO: Possibly convert to Python code
-                with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
-                    subprocess.run([
-                        'diff', '-s', '-U', '1',
-                        os.path.join(profile_dir, f'{tag}_1.xml'),
-                        os.path.join(profile_dir, f'{tag}_2.xml')
-                    ], stdout=diff_file)
+                with open(os.path.join(profile_dir, f'{tag}_1.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{tag}_2.xml'), 'r') as file2:
+                    file1_lines = file1.readlines()
+                    file2_lines = file2.readlines()
 
-                # Remove generated Qos files (may want to keep these pending use case)
-                if args.rm:
-                    os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
-                    os.remove(os.path.join(profile_dir, f'{tag}_2.xml'))
+                diff = difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{tag}_1.xml', tofile=f'{tag}_2.xml', lineterm='')
+
+                with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
+                    diff_file.writelines(diff)
 
                 if tag == 'domain_participant_qos':
-                    # LINE_COUNT will be 7 if process_id is only difference
+                    # LINE_COUNT will be 8 if process_id is only difference
                     with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
                         line_count = sum(1 for _ in f)
-                        if line_count != 7:  # TODO: Decide what to do here.
+                        if line_count != 8:
                             print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
                             error_count += 1
                             if(args.diff_break):
@@ -157,15 +158,21 @@ try:
                 else:
                     # If "identical" is not found, there is a difference
                     with open(os.path.join(profile_dir, f'{tag}.txt')) as f:
-                        if 'identical' not in f.read():
+                        if f.read().strip():
                             print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
                             error_count += 1
-                            if(args.diff_break):
+                            if args.diff_break:
                                 raise BreakLoop
+                            
+                # Remove generated Qos files (may want to keep these pending use case)
+                if args.rm:
+                    os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
+                    os.remove(os.path.join(profile_dir, f'{tag}_2.xml'))
 
 except BreakLoop:
     pass
 
+# Formatting
 if error_count > 0:
     print()
 
