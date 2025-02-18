@@ -30,6 +30,7 @@ def find_qos_profiles(xml_file):
 
     qos_profiles = set()
 
+    # Recursively search for all profiles
     for qos_library in root.findall('.//qos_library'):
         library_name = qos_library.get('name')
         if library_name:
@@ -38,6 +39,34 @@ def find_qos_profiles(xml_file):
                 if profile_name:
                     qos_profiles.add((f"{library_name}::{profile_name}", f"{library_name}::{profile_name}"))
     return qos_profiles
+
+def compare_qos_files(profile_dir, tag, qos_profile):
+    error_count = 0
+
+    with open(os.path.join(profile_dir, f'{tag}_1.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{tag}_2.xml'), 'r') as file2:
+        file1_lines = file1.readlines()
+        file2_lines = file2.readlines()
+
+    # Perform diff and get the line count
+    diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{tag}_1.xml', tofile=f'{tag}_2.xml', lineterm=''))  # Convert the iterator to a list
+    diff_line_count = len(diff_lines)
+
+    # Write the diff to the file
+    with open(os.path.join(profile_dir, f'{tag}.txt'), 'w') as diff_file:
+        diff_file.writelines(diff_lines)
+
+    if tag == 'domain_participant_qos':
+        # diff_line_count will be 11 if process_id is only difference
+        if diff_line_count != 11:
+            print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
+            error_count += 1
+    else:
+        # Any difference in the profile is considered a failure
+        if diff_line_count != 0:
+            print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
+            error_count += 1
+
+    return error_count
 
 # Argument parser setup
 parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
@@ -48,7 +77,7 @@ parser.add_argument('--profile', type=str, default='', help='Specify the Qos pro
 parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.')
 parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${PWD}/output.')
 parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
-parser.add_argument('--diff_break', action='store_true', help='Break on diff failure.')
+parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
 args = parser.parse_args()
 
 # Delete previous output directory
@@ -63,8 +92,12 @@ base_qos = os.path.join(args.out_dir, 'base_qos.xml')
 diff_qos = os.path.join(args.out_dir, 'diff_qos.xml')
 
 # Check if the Qos file exists
-if os.path.exists(args.qos_file) == False:  # TODO: Add smarts in case a default filename is provided.  Must also be in PWD
+if os.path.exists(args.qos_file) == False:
     print(f"Error: {args.qos_file} does not exist.")
+    sys.exit(1)
+
+if args.qos_file == 'USER_QOS_PROFILES.xml':
+    print("Error: USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  See README for more information.") # TODO make sure to add this to the README
     sys.exit(1)
 
 if args.commit != '':
@@ -135,36 +168,17 @@ try:
                     '-qosTag', tag
                 ], stdout=log_file, stderr=log_file)
 
-                # -s = Identify identical files, -U unified context
-                # TODO: Possibly convert to Python code
-                with open(os.path.join(profile_dir, f'{tag}_1.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{tag}_2.xml'), 'r') as file2:
-                    file1_lines = file1.readlines()
-                    file2_lines = file2.readlines()
+                # Diff the two files
+                error_count += compare_qos_files(profile_dir, tag, qos_profile)
 
-                diff = difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{tag}_1.xml', tofile=f'{tag}_2.xml', lineterm='')
-
-                with open(os.path.join(profile_dir, f'{tag}.txt'), 'w+') as diff_file:
-                    diff_file.writelines(diff)
-                    if tag == 'domain_participant_qos':
-                        # LINE_COUNT will be 8 if process_id is only difference
-                        line_count = sum(1 for _ in diff_file)
-                        if line_count != 8:
-                            print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
-                            error_count += 1
-                            if(args.diff_break):
-                                raise BreakLoop
-                    else:
-                        # If "identical" is not found, there is a difference
-                        if diff_file.read().strip():
-                            print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {tag}")
-                            error_count += 1
-                            if args.diff_break:
-                                raise BreakLoop
-
-                # Remove generated Qos files (may want to keep these pending use case)
+                # Remove generated Qos files
                 if args.rm:
                     os.remove(os.path.join(profile_dir, f'{tag}_1.xml'))
                     os.remove(os.path.join(profile_dir, f'{tag}_2.xml'))
+
+                # Break loop if break_on_failure is set and there is an error
+                if args.break_on_failure and error_count > 0:
+                    raise BreakLoop
 
 except BreakLoop:
     pass
