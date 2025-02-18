@@ -103,7 +103,7 @@ def main():
     parser.add_argument('--commit', type=str, default='', help='Specify the Git commit hash of the base file.')
     parser.add_argument('--profile', type=str, default='', help='Specify the Qos profile in the format: Library::Profile. Otherwise all profiles will be diffed.')
     parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.')
-    parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${PWD}/output.')
+    parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${CWD}/output.')
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     args = parser.parse_args()
@@ -131,7 +131,7 @@ def main():
             sys.exit(1)
 
         # USER_QOS_PROFILES.xml can't be in the working directory when diff is called otherwise Connext loads it by default
-        if args.qos_file == 'USER_QOS_PROFILES.xml':
+        if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
             print("Error: USER_QOS_PROFILES.xml can't be in the working directory when diff is called. See README for more information.")
             sys.exit(1)
 
