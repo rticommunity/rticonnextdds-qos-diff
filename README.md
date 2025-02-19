@@ -26,7 +26,7 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 - break_on_failure  Break on diff failure.
 </pre>
 
-Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.  There can not be a file named `USER_QOS_PROFILES.xml` in the current working directory.  `cd ..` is an acceptable workaround.
+Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.
 
 ### Common Scenarios
 

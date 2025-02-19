@@ -130,11 +130,6 @@ def main():
             print(f"Error: {args.qos_file} does not exist.")
             sys.exit(1)
 
-        # USER_QOS_PROFILES.xml can't be in the working directory when diff is called otherwise Connext loads it by default
-        if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
-            print("Error: USER_QOS_PROFILES.xml can't be in the working directory when diff is called. See README for more information.")
-            sys.exit(1)
-
         if args.commit != '':
             repo_path = get_git_repo_root(args.qos_file)
             result = subprocess.run(
@@ -169,6 +164,10 @@ def main():
         # Formatting
         print()
 
+        # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
+        if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
+            os.chdir('..')
+
         error_count = 0
         try:
             for qos_profile in qos_profiles:
@@ -176,16 +175,16 @@ def main():
                     profile_dir = os.path.join(args.out_dir, qos_profile[1])
                     os.makedirs(profile_dir)
                     for entity in entities:
-                        entity_base_qos = os.path.join(profile_dir, f'{entity}_1.xml')
-                        entity_diff_qos = os.path.join(profile_dir, f'{entity}_2.xml')
-                        expand_qos_profile(base_qos, entity_base_qos, qos_profile[0], entity, log_file)
-                        expand_qos_profile(diff_qos, entity_diff_qos, qos_profile[1], entity, log_file)
+                        entity_qos_out_path = os.path.join(profile_dir, f'{entity}_1.xml')
+                        entity_diff_out_path = os.path.join(profile_dir, f'{entity}_2.xml')
+                        expand_qos_profile(base_qos, entity_qos_out_path, qos_profile[0], entity, log_file)
+                        expand_qos_profile(diff_qos, entity_diff_out_path, qos_profile[1], entity, log_file)
 
                         error_count += compare_qos_files(profile_dir, entity, qos_profile)
 
                         if args.rm:
-                            os.remove(entity_base_qos)
-                            os.remove(entity_diff_qos)
+                            os.remove(entity_qos_out_path)
+                            os.remove(entity_diff_out_path)
 
                         if error_count > 0 and args.break_on_failure:
                             raise BreakLoop
@@ -203,7 +202,7 @@ def main():
         if error_count > 0:
             print()
 
-        print(f"Total errors: {error_count}.\n")
+        print(f"Total errors: {error_count}\n")
 
 if __name__ == "__main__":
     main()
