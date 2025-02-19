@@ -34,7 +34,7 @@ Either `diff_file` or `commit` must be specified.  If both are specified, `diff_
 # Diff all profiles in QOS_FILE against the same file in a previous Git COMMIT
 python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT>
 
-# Diff PROFILE in QOS_FILE against the same file in a previous Git COMMIT
+# Diff PROFILE in QOS_FILE against the same profile in a previous Git COMMIT
 python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT> --profile <PROFILE>
 
 # Diff NEW_PROFILE in QOS_FILE against PROFILE in a previous Git COMMIT
@@ -45,7 +45,7 @@ python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT> --profile <PROFILE> 
 # Diff all profiles in QOS_FILE against the a second DIFF_FILE
 python3 qos_diff.py --qos_file <QOS_FILE> --diff_file <DIFF_FILE>
 
-# Diff PROFILE in QOS_FILE against the a second DIFF_FILE
+# Diff PROFILE in QOS_FILE against the same profile in DIFF_FILE
 python3 qos_diff.py --qos_file <QOS_FILE> --diff_file <DIFF_FILE> --profile <PROFILE>
 
 # Diff PROFILE in QOS_FILE against NEW_PROFILE in DIFF_FILE
