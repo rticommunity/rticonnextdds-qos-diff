@@ -6,9 +6,7 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 import difflib
-
-RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    'rticonnextdds-xml-output-utility/build/rtixmloutpututility')
+from  utils import *
 
 class NextProfile(Exception):
     pass
@@ -86,14 +84,35 @@ def compare_qos_files(profile_dir, entity, qos_profile):
 
     return error_count
 
-def expand_qos_profile(base_qos, out_file, qos_profile, entity, log_file):
+def expand_qos_profile(base_qos, out_file, qos_profile, entity, log_file, version):
     subprocess.run([
-        RTI_XML_UTILITY_PATH,
+        os.path.join(RTI_XML_UTILITY_PATH, 'build', version, 'rtixmloutpututility'),
         '-qosFile', base_qos,
         '-outputFile', out_file,
         '-qosProfile', qos_profile,
         '-qosTag', entity
     ], stdout=log_file, stderr=log_file)
+
+def select_option(options):
+    # Print the options
+    local_options = options.copy()
+    local_options.append('Exit')
+    for i, option in enumerate(local_options, start=1):
+        print(f"{i}. {option}")
+
+    # Prompt the user to select an option
+    while True:
+        try:
+            choice = int(input("Please select an option by entering the corresponding number: "))
+            if 1 <= choice < len(local_options):
+                return local_options[choice - 1]
+            elif choice == len(local_options):
+                print("Exiting...")
+                sys.exit(0)
+            else:
+                print(f"Invalid choice. Please enter a number between 1 and {len(local_options)}.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
 def main():
     # Argument parser setup
@@ -106,6 +125,7 @@ def main():
     parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${CWD}/output.')
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
+    parser.add_argument('--version', action='store_true', help='Diff against two different versions of Connext DDS.')
     args = parser.parse_args()
 
     # Delete previous output directory
@@ -168,6 +188,16 @@ def main():
         if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
             os.chdir('..')
 
+        if(args.version):
+            connext_installations = find_rti_connext_dds_dirs(os.path.join(RTI_XML_UTILITY_PATH, 'build'))
+            if not connext_installations:
+                print("Error: No RTI Connext DDS installations found.")
+                sys.exit(1)
+            print('Please select a Connext version for the baseline Qos file.')
+            base_version = select_option(connext_installations)
+            print('\nPlease select a Connext version for the diff Qos file.')
+            diff_version = select_option(connext_installations)
+
         error_count = 0
         try:
             for qos_profile in qos_profiles:
@@ -177,8 +207,8 @@ def main():
                     for entity in entities:
                         entity_qos_out_path = os.path.join(profile_dir, f'{entity}_1.xml')
                         entity_diff_out_path = os.path.join(profile_dir, f'{entity}_2.xml')
-                        expand_qos_profile(base_qos, entity_qos_out_path, qos_profile[0], entity, log_file)
-                        expand_qos_profile(diff_qos, entity_diff_out_path, qos_profile[1], entity, log_file)
+                        expand_qos_profile(base_qos, entity_qos_out_path, qos_profile[0], entity, log_file, base_version)
+                        expand_qos_profile(diff_qos, entity_diff_out_path, qos_profile[1], entity, log_file, diff_version)
 
                         error_count += compare_qos_files(profile_dir, entity, qos_profile)
 
