@@ -95,22 +95,23 @@ def expand_qos_profile(base_qos, out_file, qos_profile, entity, log_file, versio
 
 def select_option(options):
     # Print the options
-    local_options = options.copy()
-    local_options.append('Exit')
-    for i, option in enumerate(local_options, start=1):
+    options_list = list(options)
+    options_list.sort()
+    options_list.append('Exit')
+    for i, option in enumerate(options_list, start=1):
         print(f"{i}. {option}")
 
     # Prompt the user to select an option
     while True:
         try:
             choice = int(input("Please select an option by entering the corresponding number: "))
-            if 1 <= choice < len(local_options):
-                return local_options[choice - 1]
-            elif choice == len(local_options):
+            if 1 <= choice < len(options_list):
+                return options_list[choice - 1]
+            elif choice == len(options_list):
                 print("\nExiting.  No diff will be performed.")
                 sys.exit(0)
             else:
-                print(f"Invalid choice. Please enter a number between 1 and {len(local_options)}.")
+                print(f"Invalid choice. Please enter a number between 1 and {len(options_list)}.")
         except ValueError:
             print("Invalid input. Please enter a number.")
 

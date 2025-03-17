@@ -6,7 +6,7 @@ from utils import *
 def run_command(command, cwd=None):
     result = subprocess.run(command, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
-        print(f"Error: Command '{command}' failed with return code {result.returncode}")
+        print(f"Error: Command '{command}' failed with return code {result.returncode}.")
         print(result.stdout.decode())
         print(result.stderr.decode())
         sys.exit(1)
@@ -15,17 +15,19 @@ def run_command(command, cwd=None):
         pass
 
 def main():
-    connext_install_root = os.path.dirname(os.getenv('NDDSHOME'))
-    connext_installations = find_rti_connext_dds_dirs(connext_install_root)
-
-    print('RTI Connext DDS Installations Found:')
-    for installation in connext_installations:
-        print(f"  {installation}")
-    print()
+    connext_installations = set()
+    connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
+    # Filter out installations that are not at least version 6.1.0
+    connext_installations = {x for x in connext_installations if x >= 'rti_connext_dds-6.1.0'}
 
     if not connext_installations:
         print("No RTI Connext DDS installations found.")
         sys.exit(1)
+
+    print('RTI Connext DDS Installations >= Connext 6.1.0 Found:')
+    for installation in connext_installations:
+        print(f"  {installation}")
+    print()
 
     print(f"Building for RTI Connext DDS installations:")
 
