@@ -3,6 +3,7 @@
 This script will allow you to diff Qos XML files across different versions of Connext and will expand Qos profiles to account for profile inheritance and composition.
 
 Requirements:
+
 - Python
 - One or more Connext installations version >= 6.1.0
 
@@ -13,14 +14,14 @@ git clone --recurse-submodules https://bitbucket.org/brianr114/qos_diff.git
 ```
 
 ## Build QosDiff Utility
-Built the submodules with the `build.py` script.  If you have Connext installations in multiple root directories, you can run the build utility multiple times.
+Built the submodules with the `build.py` script.  If you have Connext installations in multiple root directories, you can run the build utility multiple times.  The build utility expects the Connext installation folder to be named `rti_connext_dds-x.x.x`, which is the default installation name.
 
 ```bash
 usage: build.py [-h] --connext_dir CONNEXT_DIR --connext_arch CONNEXT_ARCH
 ```
 <pre>
--connext_dir        Specify the root path of your Connext DDS installation(s).
--connext_arch       Specify your Connext DDS architecture.
+--connext_dir        Specify the root path of your Connext DDS installation(s).
+--connext_arch       Specify your Connext DDS architecture.
 </pre>
 
 ## Usage
@@ -32,18 +33,18 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
                    [--new_profile NEW_PROFILE] [--out_dir OUT_DIR] [--rm] [--break_on_failure]
 ```
 <pre>
-- qos_file          Required argument. Specify the Qos file.
-- diff_file         Specify a Qos file to diff.
-- commit            Specify the Git commit hash of the base file.
-- profile           Specify the Qos profile in the format: Library::Profile. Otherwise all profiles will be diffed.
-- new_profile       If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.
-- out_dir           Output directory for Qos files, diffs, and logs. Default is ${CWD}/output.
-- rm                Delete intermediary diff output.
-- break_on_failure  Break on diff failure.
-- versions           Compare across different versions of Connext.
+--qos_file          Required argument. Specify the Qos file.
+--diff_file         Specify a Qos file to diff.
+--commit            Specify the Git commit hash of the base file.
+--profile           Specify the Qos profile in the format: Library::Profile. Otherwise all profiles will be diffed.
+--new_profile       If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.
+--out_dir           Output directory for Qos files, diffs, and logs. Default is ${CWD}/output.
+--rm                Delete intermediary diff output.
+--break_on_failure  Break on diff failure.
+--versions           Compare across different versions of Connext.
 </pre>
 
-Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.
+Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.  The user will be prompted by the application to select a Connext version, and if `--versions` is selected, the user will be prompted to select both the base and diff versions of Connext.
 
 ### Common Scenarios
 
