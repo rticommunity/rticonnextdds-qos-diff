@@ -1,4 +1,4 @@
-# Qos Diff Script
+# QosDiff Script
 
 ## Cloning
 
@@ -6,10 +6,20 @@
 git clone --recurse-submodules https://bitbucket.org/brianr114/qos_diff.git
 ```
 
-## Build Qos Diff Utility
-Follow directions at `<repo>/rticonnextdds-xml-output-utility/README.md` to build Qos diff utility.
+## Build QosDiff Utility
+Built the submodules with the `build.py` script.
+
+```bash
+usage: build.py [-h] --connext_dir CONNEXT_DIR --connext_arch CONNEXT_ARCH
+```
+<pre>
+-connext_dir        Specify the root path of your Connext DDS installation(s).
+-connext_arch       Specify your Connext DDS architecture.
+</pre>
 
 ## Usage
+
+Run the QosDiff utility with the `qos_diff.py` script.
 
 ```bash
 usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit COMMIT] [--profile PROFILE]

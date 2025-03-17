@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import argparse
 from utils import *
 
 def run_command(command, cwd=None):
@@ -15,6 +16,14 @@ def run_command(command, cwd=None):
         pass
 
 def main():
+    # Argument parser setup
+    parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
+    parser.add_argument('--connext_dir', type=str, required=True, help='Specify the Connext DDS installation directory.')
+    parser.add_argument('--connext_arch', type=str, required=True, help='Specify the Connext DDS architecture.')
+    args = parser.parse_args()
+
+    connext_install_root = os.path.dirname(args.connext_dir)
+
     connext_installations = set()
     connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
     # Filter out installations that are not at least version 6.1.0
@@ -40,7 +49,7 @@ def main():
 
         # Run CMake to configure the project
         cmake_command = f'cmake -DCONNEXTDDS_DIR={os.path.join(connext_install_root, installation)} \
-            -DCONNEXTDDS_ARCH={os.getenv("CONNEXTDDS_ARCH")} {RTI_XML_UTILITY_PATH}'
+            -DCONNEXTDDS_ARCH={args.connext_arch} {RTI_XML_UTILITY_PATH}'
         run_command(cmake_command, cwd=build_dir)
 
         # Run the build command
