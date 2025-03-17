@@ -18,7 +18,7 @@ def run_command(command, cwd=None):
 def main():
     # Argument parser setup
     parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
-    parser.add_argument('--connext_dir', type=str, required=True, help='Specify the Connext DDS installation directory.')
+    parser.add_argument('--connext_dir', type=str, required=True, help='Specify the root path of the Connext DDS installation(s).')
     parser.add_argument('--connext_arch', type=str, required=True, help='Specify the Connext DDS architecture.')
     args = parser.parse_args()
 

@@ -1,5 +1,11 @@
 # QosDiff Script
 
+This script will allow you to diff Qos XML files across different versions of Connext and will expand Qos profiles to account for profile inheritance and composition.
+
+Requirements:
+- Python
+- One or more Connext installations version >= 6.1.0
+
 ## Cloning
 
 ```bash
@@ -7,7 +13,7 @@ git clone --recurse-submodules https://bitbucket.org/brianr114/qos_diff.git
 ```
 
 ## Build QosDiff Utility
-Built the submodules with the `build.py` script.
+Built the submodules with the `build.py` script.  If you have Connext installations in multiple root directories, you can run the build utility multiple times.
 
 ```bash
 usage: build.py [-h] --connext_dir CONNEXT_DIR --connext_arch CONNEXT_ARCH
