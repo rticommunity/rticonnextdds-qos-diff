@@ -107,7 +107,7 @@ def select_option(options):
             if 1 <= choice < len(local_options):
                 return local_options[choice - 1]
             elif choice == len(local_options):
-                print("Exiting...")
+                print("\nExiting.  No diff will be performed.")
                 sys.exit(0)
             else:
                 print(f"Invalid choice. Please enter a number between 1 and {len(local_options)}.")
@@ -125,7 +125,7 @@ def main():
     parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${CWD}/output.')
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
-    parser.add_argument('--version', action='store_true', help='Diff against two different versions of Connext DDS.')
+    parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
     args = parser.parse_args()
 
     # Delete previous output directory
@@ -188,15 +188,23 @@ def main():
         if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
             os.chdir('..')
 
-        if(args.version):
-            connext_installations = find_rti_connext_dds_dirs(os.path.join(RTI_XML_UTILITY_PATH, 'build'))
-            if not connext_installations:
-                print("Error: No RTI Connext DDS installations found.")
+        connext_installations = find_rti_connext_dds_dirs(os.path.join(RTI_XML_UTILITY_PATH, 'build'))
+        if not connext_installations:
+            print("Error: No RTI Connext DDS installations found.")
+            sys.exit(1)
+        if(args.versions):
+            if len(connext_installations) < 2:
+                print("Error: Two RTI Connext DDS installations are required to diff versions.")
                 sys.exit(1)
             print('Please select a Connext version for the baseline Qos file.')
             base_version = select_option(connext_installations)
             print('\nPlease select a Connext version for the diff Qos file.')
             diff_version = select_option(connext_installations)
+        else:
+            print('Please select a Connext version to use.')
+            base_version = select_option(connext_installations)
+            diff_version = base_version
+        print()
 
         error_count = 0
         try:

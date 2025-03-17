@@ -24,6 +24,7 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 - out_dir           Output directory for Qos files, diffs, and logs. Default is ${CWD}/output.
 - rm                Delete intermediary diff output.
 - break_on_failure  Break on diff failure.
+- versions           Compare across different versions of Connext.
 </pre>
 
 Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.
