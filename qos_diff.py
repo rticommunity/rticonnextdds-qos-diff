@@ -49,8 +49,8 @@ def compare_qos_files(profile_dir, entity, qos_profile):
             file1_lines = file1.readlines()
             file2_lines = file2.readlines()
 
-        # Perform diff and get the line count
-        diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity}_base.xml', tofile=f'{entity}_diff.xml', lineterm=''))  # Convert the iterator to a list
+        # Perform diff and get the line count, convert the iterator to a list
+        diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity}_base.xml', tofile=f'{entity}_diff.xml', lineterm=''))
         diff_line_count = len(diff_lines)
 
         # Write the diff to the file
@@ -79,7 +79,6 @@ def compare_qos_files(profile_dir, entity, qos_profile):
             print(f"Error: {qos_profile[1]} not found in the diff Qos file.")
         else:
             print(f"Error: {qos_profile[0]} not found in the base Qos file.")
-        error_count += 1
         raise NextProfile
 
     return error_count
@@ -207,9 +206,10 @@ def main():
             diff_version = base_version
         print()
 
-        error_count = 0
+        cumulative_error_count = 0
         try:
-            for qos_profile in qos_profiles:
+            for index, qos_profile in enumerate(qos_profiles):
+                error_count = 0
                 try:
                     print(f"Diffing Qos Profile: {qos_profile[0]}")
                     profile_dir = os.path.join(args.out_dir, qos_profile[1])
@@ -227,22 +227,23 @@ def main():
                             os.remove(entity_diff_out_path)
 
                         if error_count > 0 and args.break_on_failure:
+                            cumulative_error_count += error_count
                             raise BreakLoop
 
                 except NextProfile:
-                    error_count += 1
+                    cumulative_error_count += 1
                     if args.break_on_failure:
                         raise BreakLoop
+                    else:
+                        print()
 
+                cumulative_error_count += error_count
+                if (error_count > 0) or (index == len(qos_profiles) - 1):
+                    print()
         except BreakLoop:
-            print('Stopping Test.')
-            pass
+            print('\nTest Incomplete.  ', end='')
 
-        # Formatting
-        if error_count > 0:
-            print()
-
-        print(f"Total errors: {error_count}\n")
+        print(f"Total errors: {cumulative_error_count}\n")
 
 if __name__ == "__main__":
     main()
