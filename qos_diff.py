@@ -45,16 +45,16 @@ def compare_qos_files(profile_dir, entity, qos_profile):
     error_count = 0
 
     try:
-        with open(os.path.join(profile_dir, f'{entity}_1.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{entity}_2.xml'), 'r') as file2:
+        with open(os.path.join(profile_dir, f'{entity}_base.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{entity}_diff.xml'), 'r') as file2:
             file1_lines = file1.readlines()
             file2_lines = file2.readlines()
 
         # Perform diff and get the line count
-        diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity}_1.xml', tofile=f'{entity}_2.xml', lineterm=''))  # Convert the iterator to a list
+        diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity}_base.xml', tofile=f'{entity}_diff.xml', lineterm=''))  # Convert the iterator to a list
         diff_line_count = len(diff_lines)
 
         # Write the diff to the file
-        with open(os.path.join(profile_dir, f'{entity}.txt'), 'w') as diff_file:
+        with open(os.path.join(profile_dir, f'{entity}_result.txt'), 'w') as diff_file:
             diff_file.writelines(diff_lines)
 
         if entity == 'domain_participant_qos':
@@ -71,7 +71,7 @@ def compare_qos_files(profile_dir, entity, qos_profile):
     except FileNotFoundError:
         # Determine which file is missing
         diff_missing = False
-        if os.path.exists(os.path.join(profile_dir, f'{entity}_1.xml')):
+        if os.path.exists(os.path.join(profile_dir, f'{entity}_base.xml')):
             diff_missing = True
         if qos_profile[0] == qos_profile[1]:
             print(f"Error: {qos_profile[0]} not found in the {'diff' if diff_missing else 'base'} Qos file.")
@@ -211,11 +211,12 @@ def main():
         try:
             for qos_profile in qos_profiles:
                 try:
+                    print(f"Diffing Qos Profile: {qos_profile[0]}")
                     profile_dir = os.path.join(args.out_dir, qos_profile[1])
                     os.makedirs(profile_dir)
                     for entity in entities:
-                        entity_qos_out_path = os.path.join(profile_dir, f'{entity}_1.xml')
-                        entity_diff_out_path = os.path.join(profile_dir, f'{entity}_2.xml')
+                        entity_qos_out_path = os.path.join(profile_dir, f'{entity}_base.xml')
+                        entity_diff_out_path = os.path.join(profile_dir, f'{entity}_diff.xml')
                         expand_qos_profile(base_qos, entity_qos_out_path, qos_profile[0], entity, log_file, base_version)
                         expand_qos_profile(diff_qos, entity_diff_out_path, qos_profile[1], entity, log_file, diff_version)
 
