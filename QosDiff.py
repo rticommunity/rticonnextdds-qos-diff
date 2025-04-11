@@ -4,6 +4,8 @@ from enum import Enum
 import difflib
 from  utils import *
 
+ENTITIES = ['domain_participant_qos', 'publisher_qos', 'datawriter_qos', 'subscriber_qos', 'datareader_qos', 'topic_qos']
+
 class QosType(Enum):
     BASE = 0
     DIFF = 1
@@ -38,8 +40,15 @@ class QosDiff:
         else:
             self.qos_profiles.add((profile, profile))
 
+    def run_expand(self, log_file=sys.stdout):
+        for index, qos_profile in enumerate(self.qos_profiles):
+            print(f"Expanding Qos Profile: {qos_profile[0]}")
+            curr_diff_dir = os.path.join(self.out_dir, qos_profile[0])
+            os.makedirs(curr_diff_dir)
+            for entity in ENTITIES:
+                expand_qos_profile(self.base, curr_diff_dir, qos_profile, entity, log_file)
+
     def run_diff(self, log_file=sys.stdout):
-        entities = ['domain_participant_qos', 'publisher_qos', 'datawriter_qos', 'subscriber_qos', 'datareader_qos', 'topic_qos']
         cumulative_error_count = 0
 
         for index, qos_profile in enumerate(self.qos_profiles):
@@ -49,7 +58,7 @@ class QosDiff:
                 print(f"Diffing Qos Profile: {qos_profile[1]}")
                 curr_diff_dir = os.path.join(self.out_dir, qos_profile[1])
                 os.makedirs(curr_diff_dir)
-                for entity in entities:
+                for entity in ENTITIES:
                     expand_qos_profile(self.base, curr_diff_dir, qos_profile, entity, log_file)
                     expand_qos_profile(self.diff, curr_diff_dir, qos_profile, entity, log_file)
 

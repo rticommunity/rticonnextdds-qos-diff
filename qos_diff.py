@@ -74,10 +74,6 @@ def main():
             log_file.write(f"{arg}: {value}\n")
         log_file.write("\n")
 
-        # Define Qos Files
-        # qos_diff.base = QosDiffFile(args.out_dir, QosType.BASE)
-        # qos_diff.diff = QosDiffFile(args.out_dir, QosType.DIFF)
-
         # Check if the Qos file exists
         if not os.path.exists(args.qos_file):
             print(f"Error: {args.qos_file} does not exist.")
@@ -135,12 +131,16 @@ def main():
 
         cumulative_error_count = 0
         try:
-            cumulative_error_count += qos_diff.run_diff(log_file)
+            if args.expand:
+                qos_diff.run_expand(log_file)
+            else:
+                cumulative_error_count += qos_diff.run_diff(log_file)
         except BreakLoop as e:
             cumulative_error_count += e.error_count
             print('\nTest Incomplete.  ', end='')
 
-        print(f"Total errors: {cumulative_error_count}\n")
+        if not args.expand:
+            print(f"Total errors: {cumulative_error_count}\n")
 
 if __name__ == "__main__":
     main()
