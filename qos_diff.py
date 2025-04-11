@@ -4,9 +4,9 @@ import sys
 import argparse
 import shutil
 import subprocess
-import xml.etree.ElementTree as ET
 import difflib
 from  utils import *
+from QosDiff import *
 
 class NextProfile(Exception):
     pass
@@ -24,22 +24,6 @@ def get_git_repo_root(file_path):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.output.decode('utf-8')}")
         return None
-
-def find_qos_profiles(xml_file):
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-
-    qos_profiles = set()
-
-    # Search for all profiles
-    for qos_library in root.findall('.//qos_library'):
-        library_name = qos_library.get('name')
-        if library_name:
-            for qos_profile in qos_library.findall('.//qos_profile'):
-                profile_name = qos_profile.get('name')
-                if profile_name:
-                    qos_profiles.add((f"{library_name}::{profile_name}", f"{library_name}::{profile_name}"))
-    return qos_profiles
 
 def compare_qos_files(profile_dir, entity, qos_profile):
     error_count = 0
@@ -83,12 +67,12 @@ def compare_qos_files(profile_dir, entity, qos_profile):
 
     return error_count
 
-def expand_qos_profile(base_qos, out_file, qos_profile, entity, log_file, version):
+def expand_qos_profile(qos_file, diff_path, qos_profile, entity, log_file):
     subprocess.run([
-        os.path.join(RTI_XML_UTILITY_PATH, 'build', version, 'rtixmloutpututility'),
-        '-qosFile', base_qos,
-        '-outputFile', out_file,
-        '-qosProfile', qos_profile,
+        os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
+        '-qosFile', qos_file.path,
+        '-outputFile', os.path.join(diff_path, qos_file.get_entity_path(entity)),
+        '-qosProfile', qos_profile[qos_file.type.value],
         '-qosTag', entity
     ], stdout=log_file, stderr=log_file)
 
@@ -126,6 +110,7 @@ def main():
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
+    parser.add_argument('--expand', action='store_true', help='Fully expand all profiles.  Do not diff.')
     args = parser.parse_args()
 
     # Delete previous output directory
@@ -142,42 +127,36 @@ def main():
         log_file.write("\n")
 
         # Define Qos Files
-        base_qos = os.path.join(args.out_dir, 'base_qos.xml')
-        diff_qos = os.path.join(args.out_dir, 'diff_qos.xml')
+        # qos_diff.base = QosDiffFile(args.out_dir, QosType.BASE)
+        # qos_diff.diff = QosDiffFile(args.out_dir, QosType.DIFF)
 
         # Check if the Qos file exists
         if not os.path.exists(args.qos_file):
             print(f"Error: {args.qos_file} does not exist.")
             sys.exit(1)
 
+        qos_diff = QosDiff(args)
+
         if args.commit != '':
             repo_path = get_git_repo_root(args.qos_file)
             result = subprocess.run(
                 ['git', '-C', repo_path, 'show', f'{args.commit}:{os.path.relpath(args.qos_file, repo_path)}'],
-                stdout=open(base_qos, 'w'),
+                stdout=open(qos_diff.base.path, 'w'),
                 stderr=log_file
             )
             if result.returncode != 0:
                 print(f"Error: Failed to get the base QoS file from the Git commit. See README for details.")
                 sys.exit(1)
-            shutil.copy(args.qos_file, diff_qos)
+            shutil.copy(args.qos_file, qos_diff.diff.path)
         elif args.diff_file != '':
-            shutil.copy(args.qos_file, base_qos)
-            shutil.copy(args.diff_file, diff_qos)
+            shutil.copy(args.qos_file, qos_diff.base.path)
+            shutil.copy(args.diff_file, qos_diff.diff.path)
         else:
             print("Error: Must specify either --commit or --diff_file.")
             sys.exit(1)
 
-        # Define the Profiles
-        qos_profiles = set()
-
-        if args.profile == '':
-            qos_profiles.update(find_qos_profiles(base_qos))
-            qos_profiles.update(find_qos_profiles(diff_qos))
-        elif args.new_profile != '':
-            qos_profiles.add((args.profile, args.new_profile))
-        else:
-            qos_profiles.add((args.profile, args.profile))
+        # # Define the Profiles
+        qos_diff.get_profiles(args.profile, args.new_profile)
 
         entities = ['domain_participant_qos', 'publisher_qos', 'datawriter_qos', 'subscriber_qos', 'datareader_qos', 'topic_qos']
 
@@ -197,34 +176,33 @@ def main():
                 print("Error: Two RTI Connext DDS installations are required to diff versions.")
                 sys.exit(1)
             print('Please select a Connext version for the baseline Qos file.')
-            base_version = select_option(connext_installations)
+            qos_diff.base.version = select_option(connext_installations)
             print('\nPlease select a Connext version for the diff Qos file.')
-            diff_version = select_option(connext_installations)
+            qos_diff.diff.version = select_option(connext_installations)
         else:
             print('Please select a Connext version to use.')
-            base_version = select_option(connext_installations)
-            diff_version = base_version
+            qos_diff.base.version = select_option(connext_installations)
+            qos_diff.diff.version = qos_diff.base.version
         print()
 
         cumulative_error_count = 0
         try:
-            for index, qos_profile in enumerate(qos_profiles):
+            for index, qos_profile in enumerate(qos_diff.qos_profiles):
                 error_count = 0
                 try:
-                    print(f"Diffing Qos Profile: {qos_profile[0]}")
-                    profile_dir = os.path.join(args.out_dir, qos_profile[1])
-                    os.makedirs(profile_dir)
+                    # Name the folder after the new profile, if the names are different (index 1)
+                    print(f"Diffing Qos Profile: {qos_profile[1]}")
+                    curr_diff_dir = os.path.join(args.out_dir, qos_profile[1])
+                    os.makedirs(curr_diff_dir)
                     for entity in entities:
-                        entity_qos_out_path = os.path.join(profile_dir, f'{entity}_base.xml')
-                        entity_diff_out_path = os.path.join(profile_dir, f'{entity}_diff.xml')
-                        expand_qos_profile(base_qos, entity_qos_out_path, qos_profile[0], entity, log_file, base_version)
-                        expand_qos_profile(diff_qos, entity_diff_out_path, qos_profile[1], entity, log_file, diff_version)
+                        expand_qos_profile(qos_diff.base, curr_diff_dir, qos_profile, entity, log_file)
+                        expand_qos_profile(qos_diff.diff, curr_diff_dir, qos_profile, entity, log_file)
 
-                        error_count += compare_qos_files(profile_dir, entity, qos_profile)
+                        error_count += compare_qos_files(curr_diff_dir, entity, qos_profile)
 
                         if args.rm:
-                            os.remove(entity_qos_out_path)
-                            os.remove(entity_diff_out_path)
+                            os.remove(os.path.join(curr_diff_dir, qos_diff.base.get_entity_path(entity)))
+                            os.remove(os.path.join(curr_diff_dir, qos_diff.diff.get_entity_path(entity)))
 
                         if error_count > 0 and args.break_on_failure:
                             cumulative_error_count += error_count
@@ -238,7 +216,7 @@ def main():
                         print()
 
                 cumulative_error_count += error_count
-                if (error_count > 0) or (index == len(qos_profiles) - 1):
+                if (error_count > 0) or (index == len(qos_diff.qos_profiles) - 1):
                     print()
         except BreakLoop:
             print('\nTest Incomplete.  ', end='')

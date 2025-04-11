@@ -1,5 +1,6 @@
 import os
 import re
+import xml.etree.ElementTree as ET
 
 RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
     'rticonnextdds-xml-output-utility/')
@@ -16,3 +17,19 @@ def find_rti_connext_dds_dirs(search_path):
         dirs.clear()
 
     return matching_dirs
+
+def find_qos_profiles(xml_file):
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    qos_profiles = set()
+
+    # Search for all profiles
+    for qos_library in root.findall('.//qos_library'):
+        library_name = qos_library.get('name')
+        if library_name:
+            for qos_profile in qos_library.findall('.//qos_profile'):
+                profile_name = qos_profile.get('name')
+                if profile_name:
+                    qos_profiles.add((f"{library_name}::{profile_name}", f"{library_name}::{profile_name}"))
+    return qos_profiles
