@@ -1,9 +1,17 @@
 import os
 import re
 import xml.etree.ElementTree as ET
+import subprocess
 
 RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
     'rticonnextdds-xml-output-utility/')
+
+class NextProfile(Exception):
+    pass
+
+class BreakLoop(Exception):
+    def __init__(self, value):
+        self.error_count = value
 
 def find_rti_connext_dds_dirs(search_path):
     pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
@@ -33,3 +41,12 @@ def find_qos_profiles(xml_file):
                 if profile_name:
                     qos_profiles.add((f"{library_name}::{profile_name}", f"{library_name}::{profile_name}"))
     return qos_profiles
+
+def expand_qos_profile(qos_file, diff_path, qos_profile, entity, log_file):
+    subprocess.run([
+        os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
+        '-qosFile', qos_file.path,
+        '-outputFile', os.path.join(diff_path, qos_file.get_entity_path(entity)),
+        '-qosProfile', qos_profile[qos_file.type.value],
+        '-qosTag', entity
+    ], stdout=log_file, stderr=log_file)
