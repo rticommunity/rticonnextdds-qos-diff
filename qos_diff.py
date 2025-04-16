@@ -46,8 +46,7 @@ def select_option(options):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
-def main():
-    # Argument parser setup
+def parse_arguments():
     parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
     parser.add_argument('--qos_file', type=str, required=True, help='Required argument. Specify the Qos file.')
     parser.add_argument('--diff_file', type=str, default='', help='Specify a Qos file to diff.')
@@ -59,7 +58,10 @@ def main():
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
     parser.add_argument('--expand', action='store_true', help='Fully expand all profiles.  Do not diff.')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def main():
+    args = parse_arguments()
 
     # Delete previous output directory
     if os.path.exists(args.out_dir):
@@ -95,14 +97,17 @@ def main():
         elif args.diff_file != '':
             shutil.copy(args.qos_file, qos_diff.base.path)
             shutil.copy(args.diff_file, qos_diff.diff.path)
+        elif args.expand:
+            shutil.copy(args.qos_file, qos_diff.base.path)
+            shutil.copy(args.qos_file, qos_diff.diff.path)
         else:
-            print("Error: Must specify either --commit or --diff_file.")
+            print("Error - Must specify either:\n",
+                "Diff: --commit or --diff_file to diff a Qos file\n",
+                "Expand: --expand to expand a Qos file\n")
             sys.exit(1)
 
-        # # Define the Profiles
+        # Define the Profiles
         qos_diff.get_profiles(args.profile, args.new_profile)
-
-        # entities = ['domain_participant_qos', 'publisher_qos', 'datawriter_qos', 'subscriber_qos', 'datareader_qos', 'topic_qos']
 
         # Formatting
         print()
@@ -138,6 +143,9 @@ def main():
         except BreakLoop as e:
             cumulative_error_count += e.error_count
             print('\nTest Incomplete.  ', end='')
+        except FileNotFoundError:
+            print('Qos expansion failed.  Exiting...')
+            sys.exit(1)
 
         if not args.expand:
             print(f"Total errors: {cumulative_error_count}\n")

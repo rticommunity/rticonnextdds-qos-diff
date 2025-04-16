@@ -43,10 +43,14 @@ def find_qos_profiles(xml_file):
     return qos_profiles
 
 def expand_qos_profile(qos_file, diff_path, qos_profile, entity, log_file):
+    outfile = os.path.join(diff_path, qos_file.get_entity_path(entity))
     subprocess.run([
         os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
         '-qosFile', qos_file.path,
-        '-outputFile', os.path.join(diff_path, qos_file.get_entity_path(entity)),
+        '-outputFile', outfile,
         '-qosProfile', qos_profile[qos_file.type.value],
         '-qosTag', entity
     ], stdout=log_file, stderr=log_file)
+
+    if not os.path.exists(outfile):
+        raise FileNotFoundError

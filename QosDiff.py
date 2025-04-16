@@ -24,7 +24,6 @@ class QosDiff:
         self.out_dir = args.out_dir
         self.base = QosDiffFile(args.out_dir, QosType.BASE)
         self.diff = QosDiffFile(args.out_dir, QosType.DIFF)
-        self.perform_diff = not args.expand
         self.rm = args.rm
         self.break_on_failure = args.break_on_failure
 
