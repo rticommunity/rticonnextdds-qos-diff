@@ -7,12 +7,6 @@ import subprocess
 from  utils import *
 from QosDiff import *
 
-# class NextProfile(Exception):
-#     pass
-
-# class BreakLoop(Exception):
-#     pass
-
 def get_git_repo_root(file_path):
     try:
         repo_root = subprocess.check_output(
@@ -57,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
-    parser.add_argument('--expand', action='store_true', help='Fully expand all profiles.  Do not diff.')
+    parser.add_argument('--expand', action='store_true', help='Only expand profiles.  Do not diff.')
     return parser.parse_args()
 
 def main():

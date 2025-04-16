@@ -1,4 +1,4 @@
-# QosDiff Script
+# QosDiff and QosExpand
 
 This script will allow you to diff Qos XML files across different versions of Connext and will expand Qos profiles to account for profile inheritance and composition.
 
@@ -27,11 +27,11 @@ usage: build.py [-h] --connext_dir CONNEXT_DIR --connext_arch CONNEXT_ARCH
 
 ## Usage
 
-Run the QosDiff utility with the `qos_diff.py` script.
+Run the utility with the `qos_diff.py` script.
 
 ```bash
 usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit COMMIT] [--profile PROFILE]
-                   [--new_profile NEW_PROFILE] [--out_dir OUT_DIR] [--rm] [--break_on_failure] [--versions]
+                   [--new_profile NEW_PROFILE] [--out_dir OUT_DIR] [--rm] [--break_on_failure] [--versions] [--expand]
 ```
 <pre>
 --qos_file          Required argument. Specify the Qos file.
@@ -43,13 +43,23 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 --rm                Delete intermediary diff output.
 --break_on_failure  Break on diff failure.
 --versions          Compare across different versions of Connext.
+--expand            Expand the Qos profile.  Do not diff.
 </pre>
+
+### Expand Qos Files
+
+`expand` is the only additionally required flag.
+
+### Diff Qos Files
 
 Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.  The user will be prompted by the application to select a Connext version, and if `--versions` is selected, the user will be prompted to select both the base and diff versions of Connext.
 
 ### Common Scenarios
 
 ```bash
+# Expand all profiles in QOS_FILE
+python3 qos_diff.py --qos_file <QOS_FILE> --expand
+
 # Diff all profiles in QOS_FILE against the same file in a previous Git COMMIT
 python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT>
 
@@ -58,9 +68,7 @@ python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT> --profile <PROFILE>
 
 # Diff NEW_PROFILE in QOS_FILE against PROFILE in a previous Git COMMIT
 python3 qos_diff.py --qos_file <QOS_FILE> --commit <COMMIT> --profile <PROFILE> --new_profile <NEW_PROFILE>
-```
 
-```bash
 # Diff all profiles in QOS_FILE against the a second DIFF_FILE
 python3 qos_diff.py --qos_file <QOS_FILE> --diff_file <DIFF_FILE>
 
