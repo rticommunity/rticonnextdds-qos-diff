@@ -93,7 +93,6 @@ def main():
             shutil.copy(args.diff_file, qos_diff.diff.path)
         elif args.expand:
             shutil.copy(args.qos_file, qos_diff.base.path)
-            shutil.copy(args.qos_file, qos_diff.diff.path)
         else:
             print("Error - Must specify either:\n",
                 "Diff: --commit or --diff_file to diff a Qos file\n",
@@ -118,12 +117,12 @@ def main():
             if len(connext_installations) < 2:
                 print("Error: Two RTI Connext DDS installations are required to diff versions.")
                 sys.exit(1)
-            print('Please select a Connext version for the baseline Qos file.')
+            print('Please select a Connext version for the baseline Qos file:')
             qos_diff.base.version = select_option(connext_installations)
-            print('\nPlease select a Connext version for the diff Qos file.')
+            print('\nPlease select a Connext version for the diff Qos file:')
             qos_diff.diff.version = select_option(connext_installations)
         else:
-            print('Please select a Connext version to use.')
+            print('Please select a Connext version to use:')
             qos_diff.base.version = select_option(connext_installations)
             qos_diff.diff.version = qos_diff.base.version
         print()
