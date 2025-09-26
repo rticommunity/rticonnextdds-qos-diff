@@ -76,12 +76,13 @@ class QosDiff:
             error_count = 0
             try:
                 # Name the folder after the new profile, if the names are different (index 1)
-                print(f"Diffing Qos Profile: {qos_profile[1]}")
-                curr_diff_dir = os.path.join(self.out_dir, qos_profile[1])
+                current_profile_name = QosProfileData.get_common_profile_name(qos_profile)
+                print(f"Diffing Qos Profile: {current_profile_name}")
+                curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
                 for entity in ENTITIES:
-                    expand_qos_profile(self.base, curr_diff_dir, qos_profile, entity, log_file)
-                    expand_qos_profile(self.diff, curr_diff_dir, qos_profile, entity, log_file)
+                    expand_qos_profile(self.base, curr_diff_dir, qos_profile[0].join(), entity, log_file)
+                    expand_qos_profile(self.diff, curr_diff_dir, qos_profile[1].join(), entity, log_file)
 
                     error_count += self._compare_qos_files(curr_diff_dir, entity, qos_profile)
 
@@ -93,6 +94,8 @@ class QosDiff:
                         cumulative_error_count += error_count
                         raise BreakLoop(cumulative_error_count)
 
+                # TODO: Look for named writers/readers/topics in the profile and expand/compare those as well
+
             except NextProfile:
                 cumulative_error_count += 1
                 if self.break_on_failure:
@@ -101,6 +104,7 @@ class QosDiff:
                     print()
 
             cumulative_error_count += error_count
+            # TODO: Unsure if adding named writers/readers/topics would need a different handling here
             if (error_count > 0) or (index == len(self.qos_profiles) - 1):
                 print()
 
@@ -125,12 +129,12 @@ class QosDiff:
             if entity == 'domain_participant_qos':
                 # diff_line_count will be 11 if process_id is only difference
                 if diff_line_count != 11:
-                    print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {entity}")
+                    print(f"Qos Failure | Profile: {qos_profile[1].join()} | Entity: {entity}")
                     error_count += 1
             else:
                 # Any difference in the profile is considered a failure
                 if diff_line_count != 0:
-                    print(f"Qos Failure | Profile: {qos_profile[1]} | Entity: {entity}")
+                    print(f"Qos Failure | Profile: {qos_profile[1].join()} | Entity: {entity}")
                     error_count += 1
 
         except FileNotFoundError:

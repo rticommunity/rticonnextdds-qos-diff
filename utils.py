@@ -53,6 +53,17 @@ class QosProfileData:
 
         return result
 
+    @staticmethod
+    def get_common_profile_name(profiles: tuple[QosProfileData, QosProfileData]) -> str:
+        profile_0, profile_1 = profiles
+        if profile_0 == profile_1:
+            return profile_0.join()
+        elif profile_0 != QosProfileData():
+            return profile_0.join()
+        else:
+            return profile_1.join()
+        # TODO: Throw exception if both are empty?
+
 def find_rti_connext_dds_dirs(search_path):
     pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
     matching_dirs = set()  # Use a set to ensure unique values
@@ -83,6 +94,13 @@ def find_qos_profiles(xml_file):
                         QosProfileData(library_name, profile_name, qos_profile_element)
                     )
     return qos_profiles
+
+# TODO: Create a function that receives an ET.Element (qos_profile) and returns all writers/readers/topics within the profile
+def find_named_entities_in_profile(profile: QosProfileData):
+    if profile.xml_element is None:
+        # TODO: Create a function searches from the root of the tree to find the specified profile, return [], [], [] if nothing found
+        return [], [], []
+    pass
 
 def expand_qos_profile(qos_file, diff_path, qos_profile, entity, log_file, entity_name=None):
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity))
