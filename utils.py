@@ -67,30 +67,6 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
 
     return list(entities)
 
-def find_named_entities_in_profile(profile: QosEntityData) -> dict[str, list[str]]:
-    # TODO: Handle None xml_element
-    if profile.xml_element is None:
-        return {
-            "writers": [],
-            "readers": [],
-            "topics": []
-        }
-
-    entity_map = {
-        "writers": ".//datawriter_qos",
-        "readers": ".//datareader_qos",
-        "topics": ".//topic_qos",
-    }
-
-    results = {key: [] for key in entity_map}
-
-    for key, xpath in entity_map.items():
-        for elem in profile.xml_element.findall(xpath):
-            if (name := elem.get("name")):
-                results[key].append(name)
-
-    return results
-
 def expand_qos_profile(qos_file, diff_path, qos_profile, entity, entity_name=None):
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity))
     args = [

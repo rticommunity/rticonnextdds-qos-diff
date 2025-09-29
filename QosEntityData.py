@@ -10,8 +10,6 @@ class QosEntityData:
     entity: Optional[str] = None
     entity_type: Optional[QosEntitiesEnum] = None
 
-
-    # Do not consider 'element' for equality and hashing
     def __eq__(self, other):
         if not isinstance(other, QosEntityData):
             return NotImplemented
@@ -26,14 +24,11 @@ class QosEntityData:
         return ((self.library, self.profile, self.entity or "") <
                 (other.library, other.profile, other.entity or ""))
 
-    def join(self):
+    def join(self, complete: bool = False) -> str:
         parts = [self.library, self.profile]
-        if self.entity:
+        if complete and self.entity:
             parts.append(self.entity)
         return "::".join(parts)
-
-    def join_with_entity_name(self, entity_name: str):
-        return f"{self.library}::{self.profile}::{entity_name}"
 
     @staticmethod
     def join_sets(set_a: set[QosEntityData], set_b: set[QosEntityData]) -> list[tuple[QosEntityData, QosEntityData]]:
@@ -59,6 +54,6 @@ class QosEntityData:
             return profile_0.join()
         elif profile_0 != QosEntityData():
             return profile_0.join()
-        else:
+        elif profile_1 != QosEntityData():
             return profile_1.join()
-        # TODO: Throw exception if both are empty?
+        raise ValueError("Cannot determine common profile name from two empty profiles")

@@ -72,8 +72,9 @@ class QosDiff:
 
     def run_expand(self):
         for base_profile, _ in self.qos_profiles:
-            print(f"Expanding Qos Profile: {base_profile.join()}")
-            curr_diff_dir = os.path.join(self.out_dir, base_profile.join())
+            profile = base_profile.join(complete=True)
+            print(f"Expanding Qos Profile: {profile}")
+            curr_diff_dir = os.path.join(self.out_dir, profile)
             os.makedirs(curr_diff_dir)
             if base_profile.entity is not None:
                 # This is a named entity, only expand that one
