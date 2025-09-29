@@ -51,13 +51,13 @@ class QosDiff:
                 else:
                     # TODO: Figure out where this will get handled
                     raise ValueError("New profile must be in the format 'library::profile'")
-                base_qos_profiles.add(QosProfileData(library, profile, None))
-                diff_qos_profiles.add(QosProfileData(new_library, new_profile, None))
+                base_qos_profiles.add(QosEntityData(library, profile, None))
+                diff_qos_profiles.add(QosEntityData(new_library, new_profile, None))
             else:
-                base_qos_profiles.add(QosProfileData(library, profile, None))
-                diff_qos_profiles.add(QosProfileData(library, profile, None))
+                base_qos_profiles.add(QosEntityData(library, profile, None))
+                diff_qos_profiles.add(QosEntityData(library, profile, None))
 
-        self.qos_profiles = QosProfileData.join_sets(base_qos_profiles, diff_qos_profiles)
+        self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
 
     def run_expand(self, log_file=sys.stdout):
         # Map dictionary keys → qos type strings
@@ -101,7 +101,7 @@ class QosDiff:
             error_count = 0
             try:
                 # Name the folder after the new profile, if the names are different (index 1)
-                current_profile_name = QosProfileData.get_common_profile_name(qos_profile)
+                current_profile_name = QosEntityData.get_common_profile_name(qos_profile)
                 print(f"Diffing Qos Profile: {current_profile_name}")
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
