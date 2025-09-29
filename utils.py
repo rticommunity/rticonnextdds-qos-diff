@@ -95,12 +95,29 @@ def find_qos_profiles(xml_file):
                     )
     return qos_profiles
 
-# TODO: Create a function that receives an ET.Element (qos_profile) and returns all writers/readers/topics within the profile
-def find_named_entities_in_profile(profile: QosProfileData):
+def find_named_entities_in_profile(profile: QosProfileData) -> dict[str, list[str]]:
+    # TODO: Handle None xml_element
     if profile.xml_element is None:
-        # TODO: Create a function searches from the root of the tree to find the specified profile, return [], [], [] if nothing found
-        return [], [], []
-    pass
+        return {
+            "writers": [],
+            "readers": [],
+            "topics": []
+        }
+
+    entity_map = {
+        "writers": ".//datawriter_qos",
+        "readers": ".//datareader_qos",
+        "topics": ".//topic_qos",
+    }
+
+    results = {key: [] for key in entity_map}
+
+    for key, xpath in entity_map.items():
+        for elem in profile.xml_element.findall(xpath):
+            if (name := elem.get("name")):
+                results[key].append(name)
+
+    return results
 
 def expand_qos_profile(qos_file, diff_path, qos_profile, entity, log_file, entity_name=None):
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity))

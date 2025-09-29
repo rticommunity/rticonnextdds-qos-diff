@@ -60,6 +60,13 @@ class QosDiff:
         self.qos_profiles = QosProfileData.join_sets(base_qos_profiles, diff_qos_profiles)
 
     def run_expand(self, log_file=sys.stdout):
+        # Map dictionary keys → qos type strings
+        qos_type_map = {
+                "writers": "datawriter_qos",
+                "readers": "datareader_qos",
+                "topics": "topic_qos",
+            }
+
         for qos_profile in self.qos_profiles:
             print(f"Expanding Qos Profile: {qos_profile[QosType.BASE].join()}")
             curr_diff_dir = os.path.join(self.out_dir, qos_profile[QosType.BASE].join())
@@ -67,7 +74,25 @@ class QosDiff:
             for entity in ENTITIES:
                 expand_qos_profile(self.base, curr_diff_dir, qos_profile[QosType.BASE].join(), entity, log_file)
 
-            # TODO: Look for named writers/readers/topics in the profile and expand those as well
+            entities = find_named_entities_in_profile(qos_profile[QosType.BASE])
+
+            for entity_type, names in entities.items():
+                qos_type_str = qos_type_map[entity_type]
+                for name in names:
+                    profile_name = qos_profile[QosType.BASE].join_with_entity_name(name)
+                    print(f"Expanding Qos Profile: {profile_name}")
+
+                    curr_diff_dir = os.path.join(self.out_dir, profile_name)
+                    os.makedirs(curr_diff_dir, exist_ok=True)
+
+                    expand_qos_profile(
+                        self.base,
+                        curr_diff_dir,
+                        qos_profile[QosType.BASE].join(),
+                        qos_type_str,
+                        log_file,
+                        entity_name=name
+                    )
 
     def run_diff(self, log_file=sys.stdout):
         cumulative_error_count = 0
