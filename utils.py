@@ -4,6 +4,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 from QosEntityData import QosEntityData
+from QosEntities import QosEntitiesEnum
 
 RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
     'rticonnextdds-xml-output-utility/')
@@ -36,15 +37,32 @@ def find_qos_profiles(xml_file):
 
     # Search for all profiles
     for qos_library_element in root.findall('.//qos_library'):
-        library_name = qos_library_element.get('name')
-        if library_name:
+        if (library_name := qos_library_element.get('name')):
             for qos_profile_element in qos_library_element.findall('.//qos_profile'):
-                profile_name = qos_profile_element.get('name')
-                if profile_name:
-                    qos_profiles.add(
-                        QosEntityData(library_name, profile_name, qos_profile_element)
-                    )
+                if (profile_name := qos_profile_element.get('name')):
+                    profile = QosEntityData(library_name, profile_name)
+                    qos_profiles.add(profile)
+                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datawriter_qos"))
+                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datareader_qos"))
+                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "topic_qos"))
+
     return qos_profiles
+
+def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_type: str) -> list[QosEntityData]:
+    entities = set()  # use a set to deduplicate automatically
+
+    for elem in node.findall(f'.//{entity_type}'):
+        if (name := elem.get("name")):  # walrus operator: assign and check at the same time
+            entities.add(
+                QosEntityData(
+                    library=qos_profile.library,
+                    profile=qos_profile.profile,
+                    entity=name,
+                    entity_type=QosEntitiesEnum(entity_type)
+                )
+            )
+
+    return list(entities)
 
 def find_named_entities_in_profile(profile: QosEntityData) -> dict[str, list[str]]:
     # TODO: Handle None xml_element
