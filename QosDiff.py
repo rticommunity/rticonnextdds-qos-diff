@@ -1,10 +1,11 @@
+import logging
 import os
-import sys
 from enum import IntEnum
 import difflib
 from  utils import *
-
 from QosEntities import *
+
+logger = logging.getLogger(__name__)
 
 class QosType(IntEnum):
     BASE = 0
@@ -69,20 +70,20 @@ class QosDiff:
 
         self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
 
-    def run_expand(self, log_file=sys.stdout):
+    def run_expand(self):
         for base_profile, _ in self.qos_profiles:
             print(f"Expanding Qos Profile: {base_profile.join()}")
             curr_diff_dir = os.path.join(self.out_dir, base_profile.join())
             os.makedirs(curr_diff_dir)
             if base_profile.entity is not None:
                 # This is a named entity, only expand that one
-                expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), base_profile.entity_type.value, log_file, base_profile.entity)
+                expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), base_profile.entity_type.value, base_profile.entity)
             else:
                 for entity in QosEntitiesEnum:
                     # This is a generic profile, expand all entities
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), entity.value, log_file)
+                    expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), entity.value)
 
-    def run_diff(self, log_file=sys.stdout):
+    def run_diff(self):
         cumulative_error_count = 0
 
         for index, qos_profile in enumerate(self.qos_profiles):
@@ -94,8 +95,8 @@ class QosDiff:
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
                 for entity in QosEntitiesEnum:
-                    expand_qos_profile(self.base, curr_diff_dir, qos_profile[0].join(), entity.value, log_file)
-                    expand_qos_profile(self.diff, curr_diff_dir, qos_profile[1].join(), entity.value, log_file)
+                    expand_qos_profile(self.base, curr_diff_dir, qos_profile[0].join(), entity.value)
+                    expand_qos_profile(self.diff, curr_diff_dir, qos_profile[1].join(), entity.value)
 
                     error_count += self._compare_qos_files(curr_diff_dir, entity.value, qos_profile)
 
