@@ -87,19 +87,25 @@ class QosDiff:
     def run_diff(self):
         cumulative_error_count = 0
 
-        for index, qos_profile in enumerate(self.qos_profiles):
+        for index, (base_profile, diff_profile) in enumerate(self.qos_profiles):
             error_count = 0
+            name_entity_profile = False
             try:
                 # Name the folder after the new profile, if the names are different (index 1)
-                current_profile_name = QosEntityData.get_common_profile_name(qos_profile)
+                current_profile_name = QosEntityData.get_common_profile_name((base_profile, diff_profile))
                 print(f"Diffing Qos Profile: {current_profile_name}")
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
+                named_entity_profile = base_profile.entity is not None or diff_profile.entity is not None
                 for entity in QosEntitiesEnum:
-                    expand_qos_profile(self.base, curr_diff_dir, qos_profile[0].join(), entity.value)
-                    expand_qos_profile(self.diff, curr_diff_dir, qos_profile[1].join(), entity.value)
+                    # If a named entity profile, only expand/compare the matching entity type
+                    if named_entity_profile and (base_profile.entity_type != entity and diff_profile.entity_type != entity):
+                        continue
 
-                    error_count += self._compare_qos_files(curr_diff_dir, entity.value, qos_profile)
+                    expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), entity.value)
+                    expand_qos_profile(self.diff, curr_diff_dir, diff_profile.join(), entity.value)
+
+                    error_count += self._compare_qos_files(curr_diff_dir, entity.value, (base_profile, diff_profile))
 
                     if self.rm:
                         os.remove(os.path.join(curr_diff_dir, self.base.get_entity_path(entity.value)))
