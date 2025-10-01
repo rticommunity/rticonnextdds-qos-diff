@@ -2,6 +2,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from QosEntities import QosEntitiesEnum
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class QosEntityData:
@@ -36,6 +39,9 @@ class QosEntityData:
     def is_named_entity(self) -> bool:
         return self.entity is not None
 
+    def is_default(self) -> bool:
+        return self.library == "" and self.profile == "" and self.entity is None
+
     @staticmethod
     def join_sets(set_a: set[QosEntityData], set_b: set[QosEntityData]) -> list[tuple[QosEntityData, QosEntityData]]:
         # Step 1: Index by (library, profile)
@@ -57,9 +63,14 @@ class QosEntityData:
     def get_common_profile_name(profiles: tuple[QosEntityData, QosEntityData]) -> str:
         profile_0, profile_1 = profiles
         if profile_0 == profile_1:
+            # Could also return profile_1.join()
             return profile_0.join()
+        elif not profile_0.is_default() and not profile_1.is_default():
+            # If they are not equal, but both defined, return profile_1
+            return profile_1.join()
         elif profile_0 != QosEntityData():
             return profile_0.join()
         elif profile_1 != QosEntityData():
             return profile_1.join()
+        logger.error(f"Both profiles are empty, cannot determine common profile name: {profiles}")
         raise ValueError("Cannot determine common profile name from two empty profiles")
