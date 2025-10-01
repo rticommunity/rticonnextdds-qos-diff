@@ -1,24 +1,12 @@
 import logging
 import os
-from enum import IntEnum
 import difflib
 from  utils import *
 from QosEntities import *
 
+from QosDiffFile import QosDiffFile, QosType
+
 logger = logging.getLogger(__name__)
-
-class QosType(IntEnum):
-    BASE = 0
-    DIFF = 1
-
-class QosDiffFile:
-    def __init__(self, out_dir, type):
-        self.type = type
-        self.path = os.path.join(out_dir, 'base_qos.xml' if self.type == QosType.BASE else 'diff_qos.xml')
-        self.version = ''
-
-    def get_entity_path(self, entity_name):
-        return f'{entity_name}_base.xml' if self.type == QosType.BASE else f'{entity_name}_diff.xml'
 
 class QosDiff:
     def __init__(self, args):
@@ -32,84 +20,80 @@ class QosDiff:
         # Define the Profiles
         self.qos_profiles = set()
 
-    def get_profiles(self, profile, new_profile):
-        base_qos_profiles = set()
-        diff_qos_profiles = set()
-        if profile == '' and new_profile == '':
+    def get_profiles(self, profile_arg, new_profile_arg):
+        def split_profile_arg(arg):
+            parts = arg.split("::")
+            if len(parts) not in (2, 4):
+                logger.error(f"Input must have 2 or 4 parts separated by '::', Input: {arg!r}")
+                raise ValueError(f"Input must have 2 or 4 parts separated by '::', Input: {arg!r}")
+            library = parts[0]
+            profile = parts[1]
+            entity = parts[2] if len(parts) == 4 else None
+            entity_type = parts[3].lower() if len(parts) == 4 else None
+            try:
+                enum_value = QosEntitiesEnum(entity_type) if len(parts) == 4 else None
+                return QosEntityData(library, profile, entity, enum_value)
+            except ValueError as e:
+                logger.error(f"Invalid entity_type '{entity_type}' for QosEntitiesEnum.")
+                raise e
+
+        if not profile_arg and not new_profile_arg:
+            base_qos_profiles = set()
+            diff_qos_profiles = set()
             base_qos_profiles.update(find_qos_profiles(self.base.path))
             if not self.expand:
                 diff_qos_profiles.update(find_qos_profiles(self.diff.path))
+
+            self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
         else:
-            if "::" in profile:
-                parts = profile.split("::")
-                if len(parts) < 2:
-                    raise ValueError(f"Input must have at least 2 parts separated by '::', got: {profile!r}")
-                library = parts[0]
-                profile = parts[1]
-                entity = parts[2] if len(parts) > 2 else None
-            else:
-                # TODO: Figure out where this will get handled
-                raise ValueError("Profile must be in the format 'library::profile'")
-
-            if new_profile != '':
-                if "::" in new_profile:
-                    parts = profile.split("::")
-                    if len(parts) < 2:
-                        raise ValueError(f"Input must have at least 2 parts separated by '::', got: {profile!r}")
-                    new_library = parts[0]
-                    new_profile = parts[1]
-                    new_entity = parts[2] if len(parts) > 2 else None
-                else:
-                    # TODO: Figure out where this will get handled
-                    raise ValueError("New profile must be in the format 'library::profile'")
-                base_qos_profiles.add(QosEntityData(library, profile, entity, None))
-                diff_qos_profiles.add(QosEntityData(new_library, new_profile, new_entity, None))
-            else:
-                base_qos_profiles.add(QosEntityData(library, profile, entity, None))
-                diff_qos_profiles.add(QosEntityData(library, profile, entity, None))
-
-        self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
+            base_profile = split_profile_arg(profile_arg)
+            diff_profile = split_profile_arg(new_profile_arg) if new_profile_arg else base_profile
+            self.qos_profiles.add((base_profile, diff_profile))
 
     def run_expand(self):
         for base_profile, _ in self.qos_profiles:
-            profile = base_profile.join(complete=True)
+            profile = base_profile.join()
             print(f"Expanding Qos Profile: {profile}")
             curr_diff_dir = os.path.join(self.out_dir, profile)
             os.makedirs(curr_diff_dir)
-            if base_profile.entity is not None:
+            if base_profile.is_named_entity():
                 # This is a named entity, only expand that one
-                expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), base_profile.entity_type.value, base_profile.entity)
+                expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type)
             else:
-                for entity in QosEntitiesEnum:
+                for entity_type in QosEntitiesEnum:
                     # This is a generic profile, expand all entities
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), entity.value)
+                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type)
 
     def run_diff(self):
         cumulative_error_count = 0
 
         for index, (base_profile, diff_profile) in enumerate(self.qos_profiles):
             error_count = 0
-            name_entity_profile = False
             try:
                 # Name the folder after the new profile, if the names are different (index 1)
                 current_profile_name = QosEntityData.get_common_profile_name((base_profile, diff_profile))
                 print(f"Diffing Qos Profile: {current_profile_name}")
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
-                named_entity_profile = base_profile.entity is not None or diff_profile.entity is not None
-                for entity in QosEntitiesEnum:
+
+                if base_profile.entity_type != diff_profile.entity_type:
+                    logger.error(f"Entity type mismatch: {base_profile} vs {diff_profile}")
+                    raise NextProfile("Mismatched entity types")
+
+                named_entity_profile = base_profile.is_named_entity() or diff_profile.is_named_entity()
+                for entity_type in QosEntitiesEnum:
                     # If a named entity profile, only expand/compare the matching entity type
-                    if named_entity_profile and (base_profile.entity_type != entity and diff_profile.entity_type != entity):
+                    if named_entity_profile and  diff_profile.entity_type != entity_type:
                         continue
 
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile.join(), entity.value)
-                    expand_qos_profile(self.diff, curr_diff_dir, diff_profile.join(), entity.value)
+                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type)
+                    expand_qos_profile(self.diff, curr_diff_dir, diff_profile, entity_type)
 
-                    error_count += self._compare_qos_files(curr_diff_dir, entity.value, (base_profile, diff_profile))
+                    error_count += self._compare_qos_files(curr_diff_dir, entity_type.value, (base_profile, diff_profile))
 
                     if self.rm:
-                        os.remove(os.path.join(curr_diff_dir, self.base.get_entity_path(entity.value)))
-                        os.remove(os.path.join(curr_diff_dir, self.diff.get_entity_path(entity.value)))
+                        os.remove(os.path.join(curr_diff_dir, self.base.get_entity_path(entity_type)))
+                        os.remove(os.path.join(curr_diff_dir, self.diff.get_entity_path(entity_type)))
 
                     if error_count > 0 and self.break_on_failure:
                         cumulative_error_count += error_count

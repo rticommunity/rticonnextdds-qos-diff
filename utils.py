@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 from QosEntityData import QosEntityData
 from QosEntities import QosEntitiesEnum
+from QosDiffFile import QosDiffFile
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +68,15 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
 
     return list(entities)
 
-def expand_qos_profile(qos_file, diff_path, qos_profile, entity, entity_name=None):
-    outfile = os.path.join(diff_path, qos_file.get_entity_path(entity))
+def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum):
+    qos_profile_str, entity_name = qos_profile.split_entity_name()
+    outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))
     args = [
         os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
         '-qosFile', qos_file.path,
         '-outputFile', outfile,
-        '-qosProfile', qos_profile,
-        '-qosTag', entity
+        '-qosProfile', qos_profile_str,
+        '-qosTag', entity_type.value
     ]
     if entity_name:
         args += ['-topicName', entity_name]

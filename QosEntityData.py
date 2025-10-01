@@ -24,11 +24,17 @@ class QosEntityData:
         return ((self.library, self.profile, self.entity or "") <
                 (other.library, other.profile, other.entity or ""))
 
-    def join(self, complete: bool = False) -> str:
+    def join(self) -> str:
         parts = [self.library, self.profile]
-        if complete and self.entity:
+        if self.entity:
             parts.append(self.entity)
         return "::".join(parts)
+
+    def split_entity_name(self) -> tuple[str, Optional[str]]:
+        return (f"{self.library}::{self.profile}", self.entity)
+
+    def is_named_entity(self) -> bool:
+        return self.entity is not None
 
     @staticmethod
     def join_sets(set_a: set[QosEntityData], set_b: set[QosEntityData]) -> list[tuple[QosEntityData, QosEntityData]]:
