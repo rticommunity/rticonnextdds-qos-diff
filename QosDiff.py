@@ -23,16 +23,17 @@ class QosDiff:
     def get_profiles(self, profile_arg, new_profile_arg):
         def split_profile_arg(arg):
             parts = arg.split("::")
-            if len(parts) not in (2, 4):
-                logger.error(f"Input must have 2 or 4 parts separated by '::', Input: {arg!r}")
-                raise ValueError(f"Input must have 2 or 4 parts separated by '::', Input: {arg!r}")
+            if len(parts) not in (2, 5):
+                logger.error(f"Input must have 2 or 5 parts separated by '::', Input: {arg!r}")
+                raise ValueError(f"Input must have 2 or 5 parts separated by '::', Input: {arg!r}")
             library = parts[0]
             profile = parts[1]
-            entity = parts[2] if len(parts) == 4 else None
-            entity_type = parts[3].lower() if len(parts) == 4 else None
+            entity_name = parts[2] if len(parts) == 5 else None
+            topic_filter = parts[3] if len(parts) == 5 else None
+            entity_type = parts[4].lower() if len(parts) == 5 else None
             try:
-                enum_value = QosEntitiesEnum(entity_type) if len(parts) == 4 else None
-                return QosEntityData(library, profile, entity, enum_value)
+                enum_value = QosEntitiesEnum(entity_type) if len(parts) == 5 else None
+                return QosEntityData(library, profile, entity_name, topic_filter, enum_value)
             except ValueError as e:
                 logger.error(f"Invalid entity_type '{entity_type}' for QosEntitiesEnum.")
                 raise e

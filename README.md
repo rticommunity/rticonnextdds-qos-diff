@@ -37,8 +37,8 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 --qos_file          Required argument. Specify the Qos file.
 --diff_file         Specify a Qos file to diff.
 --commit            Specify the Git commit hash of the base file.
---profile           Specify the Qos profile in the format: Library::Profile. Otherwise all profiles will be diffed.
---new_profile       If the profile has been renamed in the diff file, specify the new Qos Profile in the format: Library::Profile.
+--profile           Specify the Qos profile as specified in the README. Otherwise all profiles will be diffed.
+--new_profile       If the profile has been renamed in the diff file, specify the new Qos Profile as specified in the README.
 --out_dir           Output directory for Qos files, diffs, and logs. Default is ${CWD}/output.
 --rm                Delete intermediary diff output.
 --break_on_failure  Break on diff failure.
@@ -54,7 +54,13 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 
 Either `diff_file` or `commit` must be specified.  If both are specified, `diff_file` will be ignored.  The user will be prompted by the application to select a Connext version, and if `--versions` is selected, the user will be prompted to select both the base and diff versions of Connext.
 
-### Common Scenarios
+### Profile Specification
+
+To operate on a single profile instead of the entire file, you can use the `--profile` command with arguments in the format `LIBRARY::PROFILE[::[ENTITY_NAME]::TOPIC_FILTER::ENTITY_TYPE]`.  If you choose to specify a `TOPIC_FILTER`, `ENTITY_TYPE` is required and `ENTITY_NAME` is optional.  Valid options for `ENTITY_TYPE` are: `datawriter_qos`, `datareader_qos`, `topic_qos`.
+
+This same argument pattern is required for the `--new_profile` argument.
+
+## Common Scenarios
 
 ```bash
 # Expand all profiles in QOS_FILE

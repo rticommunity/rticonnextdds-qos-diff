@@ -35,7 +35,7 @@ class QosEntityData:
     def join(self) -> str:
         parts = [self.library, self.profile]
         if self.has_topic_filter():
-            parts.append(self.entity_name or self.topic_filter)
+            parts.append(self.entity_name or f"TopicFilter={self.topic_filter}")
         return "::".join(parts)
 
     def split_entity_name(self) -> tuple[str, Optional[str]]:
