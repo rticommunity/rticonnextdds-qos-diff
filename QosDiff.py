@@ -56,8 +56,8 @@ class QosDiff:
             print(f"Expanding Qos Profile: {profile}")
             curr_diff_dir = os.path.join(self.out_dir, profile)
             os.makedirs(curr_diff_dir)
-            if base_profile.is_named_entity():
-                # This is a named entity, only expand that one
+            if base_profile.has_topic_filter():
+                # This has a topic filter, only expand that one
                 expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type)
             else:
                 for entity_type in QosEntitiesEnum:
@@ -80,7 +80,7 @@ class QosDiff:
                     logger.error(f"Entity type mismatch: {base_profile} vs {diff_profile}")
                     raise NextProfile("Mismatched entity types")
 
-                named_entity_profile = base_profile.is_named_entity() or diff_profile.is_named_entity()
+                named_entity_profile = base_profile.has_topic_filter() or diff_profile.has_topic_filter()
                 for entity_type in QosEntitiesEnum:
                     # If a named entity profile, only expand/compare the matching entity type
                     if named_entity_profile and  diff_profile.entity_type != entity_type:
@@ -89,7 +89,7 @@ class QosDiff:
                     expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type)
                     expand_qos_profile(self.diff, curr_diff_dir, diff_profile, entity_type)
 
-                    error_count += self._compare_qos_files(curr_diff_dir, entity_type.value, (base_profile, diff_profile))
+                    error_count += self._compare_qos_files(curr_diff_dir, entity_type, (base_profile, diff_profile))
 
                     if self.rm:
                         os.remove(os.path.join(curr_diff_dir, self.base.get_entity_path(entity_type)))
@@ -99,8 +99,6 @@ class QosDiff:
                         cumulative_error_count += error_count
                         raise BreakLoop(cumulative_error_count)
 
-                # TODO: Look for named writers/readers/topics in the profile and expand/compare those as well
-
             except NextProfile:
                 cumulative_error_count += 1
                 if self.break_on_failure:
@@ -109,50 +107,49 @@ class QosDiff:
                     print()
 
             cumulative_error_count += error_count
-            # TODO: Unsure if adding named writers/readers/topics would need a different handling here
             if (error_count > 0) or (index == len(self.qos_profiles) - 1):
                 print()
 
         return cumulative_error_count
 
-    def _compare_qos_files(self, profile_dir, entity, qos_profile):
+    def _compare_qos_files(self, profile_dir: str, entity_type: QosEntitiesEnum, qos_profile: tuple[QosEntityData, QosEntityData]) -> int:
         error_count = 0
+        base_profile, diff_profile = qos_profile
 
         try:
-            with open(os.path.join(profile_dir, f'{entity}_base.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{entity}_diff.xml'), 'r') as file2:
+            with open(os.path.join(profile_dir, f'{entity_type.value}_base.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{entity_type.value}_diff.xml'), 'r') as file2:
                 file1_lines = file1.readlines()
                 file2_lines = file2.readlines()
 
             # Perform diff and get the line count, convert the iterator to a list
-            diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity}_base.xml', tofile=f'{entity}_diff.xml', lineterm=''))
+            diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity_type.value}_base.xml', tofile=f'{entity_type.value}_diff.xml', lineterm=''))
             diff_line_count = len(diff_lines)
 
             # Write the diff to the file
-            with open(os.path.join(profile_dir, f'{entity}_result.txt'), 'w') as diff_file:
+            with open(os.path.join(profile_dir, f'{entity_type.value}_result.txt'), 'w') as diff_file:
                 diff_file.writelines(diff_lines)
 
-            if entity == 'domain_participant_qos':
+            if entity_type == QosEntitiesEnum.DOMAIN_PARTICIPANT:
                 # diff_line_count will be 11 if process_id is only difference
                 if diff_line_count != 11:
-                    print(f"Qos Failure | Profile: {qos_profile[1].join()} | Entity: {entity}")
+                    print(f"Qos Failure | Profile: {base_profile.join()} | Entity: {entity_type.name}")
                     error_count += 1
             else:
                 # Any difference in the profile is considered a failure
                 if diff_line_count != 0:
-                    print(f"Qos Failure | Profile: {qos_profile[1].join()} | Entity: {entity}")
+                    print(f"Qos Failure | Profile: {diff_profile.join()} | Entity: {entity_type.name}")
                     error_count += 1
+        except FileNotFoundError as e:
+            logger.error(f"Diff Error: {e}")
+            diff_missing = ('_diff.xml' in e.filename)
+            profiles_equal = (base_profile == diff_profile)
 
-        except FileNotFoundError:
-            # Determine which file is missing
-            diff_missing = False
-            if os.path.exists(os.path.join(profile_dir, f'{entity}_base.xml')):
-                diff_missing = True
-            if qos_profile[0] == qos_profile[1]:
-                print(f"Error: {qos_profile[0]} not found in the {'diff' if diff_missing else 'base'} Qos file.")
-            elif diff_missing:
-                print(f"Error: {qos_profile[1]} not found in the diff Qos file.")
-            else:
-                print(f"Error: {qos_profile[0]} not found in the base Qos file.")
+            # Choose which profile to reference
+            profile = base_profile if profiles_equal or not diff_missing else diff_profile
+            # Choose which file type
+            file_type = "diff" if diff_missing else "base"
+            logger.error(f"Error: {profile.join()} not found in the {file_type} Qos file.")
+
             raise NextProfile
 
         return error_count

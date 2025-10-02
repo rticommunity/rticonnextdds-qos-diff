@@ -11,6 +11,7 @@ class QosEntityData:
     library: str = ""
     profile: str = ""
     entity: Optional[str] = None
+    topic_filter: Optional[str] = None
     entity_type: Optional[QosEntitiesEnum] = None
 
     def __eq__(self, other):
@@ -18,35 +19,43 @@ class QosEntityData:
             return NotImplemented
         return (self.library == other.library and
                 self.profile == other.profile and
-                self.entity == other.entity)
+                self.entity == other.entity and
+                self.topic_filter == other.topic_filter)
 
     def __hash__(self):
-        return hash((self.library, self.profile, self.entity))
+        return hash((self.library, self.profile, self.entity, self.topic_filter))
 
     def __lt__(self, other: QosEntityData) -> bool:
         return ((self.library, self.profile, self.entity or "") <
                 (other.library, other.profile, other.entity or ""))
 
+    def __str__(self) -> str:
+        return self.join()
+
     def join(self) -> str:
         parts = [self.library, self.profile]
-        if self.entity:
-            parts.append(self.entity)
+        if self.has_topic_filter():
+            parts.append(self.entity or self.topic_filter)
         return "::".join(parts)
 
     def split_entity_name(self) -> tuple[str, Optional[str]]:
         return (f"{self.library}::{self.profile}", self.entity)
 
-    def is_named_entity(self) -> bool:
-        return self.entity is not None
-
     def is_default(self) -> bool:
-        return self.library == "" and self.profile == "" and self.entity is None
+        return (self.library == "" and self.profile == "" and
+                self.entity is None and self.topic_filter is None)
+
+    def has_topic_filter(self) -> bool:
+        return self.topic_filter is not None
+
+    def get_topic_filter(self) -> Optional[str]:
+        return self.topic_filter
 
     @staticmethod
     def join_sets(set_a: set[QosEntityData], set_b: set[QosEntityData]) -> list[tuple[QosEntityData, QosEntityData]]:
-        # Step 1: Index by (library, profile)
-        index1 = {(q.library, q.profile, q.entity): q for q in set_a}
-        index2 = {(q.library, q.profile, q.entity): q for q in set_b}
+        # Step 1: Index by (library, profile, entity, topic_filter)
+        index1 = {(q.library, q.profile, q.entity, q.topic_filter): q for q in set_a}
+        index2 = {(q.library, q.profile, q.entity, q.topic_filter): q for q in set_b}
 
         # Step 2: Collect union of keys
         all_keys = index1.keys() | index2.keys()

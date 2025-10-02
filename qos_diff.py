@@ -157,6 +157,7 @@ def main():
         sys.exit(1)
 
     if not args.expand:
+        logger.info(f"Total errors: {cumulative_error_count}\n")
         print(f"Total errors: {cumulative_error_count}\n")
 
 if __name__ == "__main__":

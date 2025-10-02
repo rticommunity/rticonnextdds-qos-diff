@@ -24,7 +24,7 @@ def find_rti_connext_dds_dirs(search_path):
     pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
     matching_dirs = set()  # Use a set to ensure unique values
 
-    for root, dirs, files in os.walk(search_path, topdown=True):
+    for root, dirs, _ in os.walk(search_path, topdown=True):
         for dir_name in dirs:
             if pattern.search(dir_name):
                 matching_dirs.add(dir_name)
@@ -56,12 +56,13 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
     entities = set()  # use a set to deduplicate automatically
 
     for elem in node.findall(f'.//{entity_type}'):
-        if (name := elem.get("name")):  # walrus operator: assign and check at the same time
+        if (topic_filter := elem.get("topic_filter")):  # walrus operator: assign and check at the same time
             entities.add(
                 QosEntityData(
                     library=qos_profile.library,
                     profile=qos_profile.profile,
-                    entity=name,
+                    entity=elem.get('name', None),
+                    topic_filter=topic_filter,
                     entity_type=QosEntitiesEnum(entity_type)
                 )
             )
@@ -69,7 +70,8 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
     return list(entities)
 
 def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum):
-    qos_profile_str, entity_name = qos_profile.split_entity_name()
+    qos_profile_str, _ = qos_profile.split_entity_name()
+    topic_filter = qos_profile.get_topic_filter()
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))
     args = [
         os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
@@ -78,8 +80,8 @@ def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEn
         '-qosProfile', qos_profile_str,
         '-qosTag', entity_type.value
     ]
-    if entity_name:
-        args += ['-topicName', entity_name]
+    if topic_filter:
+        args += ['-topicName', topic_filter]
 
     result = subprocess.run(args, capture_output=True, text=True)
     if result.stdout:
