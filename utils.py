@@ -61,7 +61,7 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
                 QosEntityData(
                     library=qos_profile.library,
                     profile=qos_profile.profile,
-                    entity=elem.get('name', None),
+                    entity_name=elem.get('name', None),
                     topic_filter=topic_filter,
                     entity_type=QosEntitiesEnum(entity_type)
                 )
