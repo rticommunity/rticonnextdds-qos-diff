@@ -52,6 +52,7 @@ def parse_arguments():
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
     parser.add_argument('--expand', action='store_true', help='Only expand profiles.  Do not diff.')
+    parser.add_argument('--delta', action='store_true', help='Only show the delta from default profile values.')
     return parser.parse_args()
 
 def main():
@@ -142,11 +143,13 @@ def main():
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
     print()
+    if args.delta and not args.expand:
+        print("Warning: --delta only applies when --expand is also specified.  Ignoring --delta.\n")
 
     cumulative_error_count = 0
     try:
         if args.expand:
-            qos_diff.run_expand()
+            qos_diff.run_expand(args.delta)
         else:
             cumulative_error_count += qos_diff.run_diff()
     except BreakLoop as e:

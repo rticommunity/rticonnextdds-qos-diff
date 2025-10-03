@@ -69,7 +69,7 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
 
     return list(entities)
 
-def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum):
+def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
     qos_profile_str, _ = qos_profile.split_entity_name()
     topic_filter = qos_profile.get_topic_filter()
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))
@@ -82,6 +82,8 @@ def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEn
     ]
     if topic_filter:
         args += ['-topicName', topic_filter]
+    if delta:
+        args.append('-deltaProfile')
 
     result = subprocess.run(args, capture_output=True, text=True)
     if result.stdout:

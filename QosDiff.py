@@ -51,7 +51,7 @@ class QosDiff:
             diff_profile = split_profile_arg(new_profile_arg) if new_profile_arg else base_profile
             self.qos_profiles.add((base_profile, diff_profile))
 
-    def run_expand(self):
+    def run_expand(self, profile_delta: bool):
         for base_profile, _ in self.qos_profiles:
             profile = base_profile.join()
             print(f"Expanding Qos Profile: {profile}")
@@ -59,11 +59,11 @@ class QosDiff:
             os.makedirs(curr_diff_dir)
             if base_profile.has_topic_filter():
                 # This has a topic filter, only expand that one
-                expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type)
+                expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type, profile_delta)
             else:
                 for entity_type in QosEntitiesEnum:
                     # This is a generic profile, expand all entities
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type)
+                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type, profile_delta)
 
     def run_diff(self):
         cumulative_error_count = 0
