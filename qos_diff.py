@@ -4,8 +4,10 @@ import sys
 import argparse
 import shutil
 import logging
+
 from utils import *
 from QosDiff import *
+from LogFormatter import ColorFormatter
 
 def get_git_repo_root(file_path):
     try:
@@ -76,7 +78,7 @@ def main():
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.WARNING)
-    console_handler.setFormatter(logging.Formatter('[%(levelname)s - %(name)s] %(message)s'))
+    console_handler.setFormatter(ColorFormatter('[%(levelname)s - %(name)s] %(message)s'))
     logger.addHandler(console_handler)
 
     # Log all command-line arguments
