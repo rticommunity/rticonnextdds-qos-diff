@@ -46,26 +46,39 @@ def find_qos_profiles(xml_file):
                 if (profile_name := qos_profile_element.get('name')):
                     profile = QosEntityData(library_name, profile_name)
                     qos_profiles.add(profile)
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datawriter_qos"))
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datareader_qos"))
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "topic_qos"))
+                    for entity_type in [QosEntitiesEnum.DATAWRITER, QosEntitiesEnum.DATAREADER, QosEntitiesEnum.TOPIC]:
+                        qos_profiles.update(find_named_entities(profile, qos_profile_element, entity_type))
 
     return qos_profiles
 
-def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_type: str) -> list[QosEntityData]:
-    entities = set()  # use a set to deduplicate automatically
+def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_type: QosEntitiesEnum) -> list[QosEntityData]:
+    entities = set()
+    # When Connext reads a Qos file, if multiple profiles have the same topic filter, it only uses the first one.
+    topic_filters_set = set()
+    first_general_profile_found = False
 
-    for elem in node.findall(f'.//{entity_type}'):
-        if (topic_filter := elem.get("topic_filter")):  # walrus operator: assign and check at the same time
+    for elem in node.findall(f'.//{entity_type.value}'):
+        topic_filter = elem.get("topic_filter")
+        if topic_filter:
+            if topic_filter in topic_filters_set:
+                logger.warning(f"Duplicate topic_filter '{topic_filter}' found in profile '{qos_profile.join()}'. Only the first occurrence will be used.")
+                continue
             entities.add(
                 QosEntityData(
                     library=qos_profile.library,
                     profile=qos_profile.profile,
                     entity_name=elem.get('name', None),
                     topic_filter=topic_filter,
-                    entity_type=QosEntitiesEnum(entity_type)
+                    entity_type=entity_type
                 )
             )
+            topic_filters_set.add(topic_filter)
+        elif first_general_profile_found:
+            logger.warning(f"Multiple general {entity_type.value} profiles found in profile '{qos_profile.join()}'. Only the first occurrence will be used.")
+            continue
+        else:
+            # This profile will be handled by the general expansion of LIBRARY::PROFILE.  Don't need to add it here.
+            first_general_profile_found = True
 
     return list(entities)
 

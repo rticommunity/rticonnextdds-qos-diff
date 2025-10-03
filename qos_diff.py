@@ -113,9 +113,6 @@ def main():
         logging.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
         sys.exit(1)
 
-    # Define the Profiles
-    qos_diff.get_profiles(args.profile, args.new_profile)
-
     # Formatting
     print()
 
@@ -142,6 +139,9 @@ def main():
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
     print()
+
+    # Define the Profiles
+    qos_diff.get_profiles(args.profile, args.new_profile)
 
     cumulative_error_count = 0
     try:
