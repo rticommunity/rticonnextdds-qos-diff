@@ -16,13 +16,25 @@ def run_command(command, cwd=None):
         pass
 
 def main():
-    # Argument parser setup
-    parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
-    parser.add_argument('--connext_dir', type=str, required=True, help='Specify the root path of the Connext DDS installation(s).')
-    parser.add_argument('--connext_arch', type=str, required=True, help='Specify the Connext DDS architecture.')
-    args = parser.parse_args()
 
-    connext_install_root = os.path.dirname(args.connext_dir)
+    # Check for environment variables first
+    env_connext_dir = os.environ.get('NDDSHOME')
+    env_connext_arch = os.environ.get('CONNEXTDDS_ARCH')
+
+    if env_connext_dir and env_connext_arch:
+        connext_dir = env_connext_dir
+        connext_arch = env_connext_arch
+        print(f"Using environment variables: NDDSHOME={connext_dir}, CONNEXTDDS_ARCH={connext_arch}")
+    else:
+        # Argument parser fallback
+        parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
+        parser.add_argument('--connext_dir', type=str, required=True, help='Specify the root path of the Connext DDS installation(s).')
+        parser.add_argument('--connext_arch', type=str, required=True, help='Specify the Connext DDS architecture.')
+        args = parser.parse_args()
+        connext_dir = args.connext_dir
+        connext_arch = args.connext_arch
+
+    connext_install_root = os.path.dirname(connext_dir)
 
     connext_installations = set()
     connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
@@ -49,7 +61,7 @@ def main():
 
         # Run CMake to configure the project
         cmake_command = f'cmake -DCONNEXTDDS_DIR={os.path.join(connext_install_root, installation)} \
-            -DCONNEXTDDS_ARCH={args.connext_arch} {RTI_XML_UTILITY_PATH}'
+            -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH}'
         run_command(cmake_command, cwd=build_dir)
 
         # Run the build command

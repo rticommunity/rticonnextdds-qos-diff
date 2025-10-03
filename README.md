@@ -15,13 +15,19 @@ git clone --recurse-submodules https://bitbucket.org/brianr114/qos_diff.git
 ```
 
 ## Build QosDiff Utility
-Build the submodules with the `build.py` script.  If you have Connext installations in multiple root directories, you can run the build utility multiple times.  The build utility expects the Connext installation folder to be named `rti_connext_dds-x.x.x`, which is the default installation name.
+Build the submodules with the `build.py` script.  The build tool will look in the parent of `connext_dir` for other Connext installations.  The build utility expects the Connext installation folder to be named `rti_connext_dds-x.x.x`, which is the default installation name. If you use RTI scripts to setup your environment (environment variables `NDDSHOME` and `CONNEXTDDS_ARCH`), you can simply use the build script as follows:
+
+```bash
+python3 build.py
+```
+
+Otherwise, you must specify those parameters as required arguments:
 
 ```bash
 usage: build.py [-h] --connext_dir CONNEXT_DIR --connext_arch CONNEXT_ARCH
 ```
 <pre>
---connext_dir       Specify the root path of your Connext DDS installation(s).
+--connext_dir       /path/to/rti_connext_dds-x.x.x
 --connext_arch      Specify your Connext DDS architecture.
 </pre>
 
