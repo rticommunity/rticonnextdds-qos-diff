@@ -5,6 +5,7 @@ from  utils import *
 from QosEntities import *
 
 from QosDiffFile import QosDiffFile, QosType
+from PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
@@ -133,12 +134,12 @@ class QosDiff:
             if entity_type == QosEntitiesEnum.DOMAIN_PARTICIPANT:
                 # diff_line_count will be 11 if process_id is only difference
                 if diff_line_count != 11:
-                    print(f"Qos Failure | Profile: {base_profile.join()} | Entity: {entity_type.name}")
+                    print_colored(logging.ERROR, "Diff Failure", f"Profile: {base_profile.join()} - Entity: {entity_type.name}")
                     error_count += 1
             else:
                 # Any difference in the profile is considered a failure
                 if diff_line_count != 0:
-                    print(f"Qos Failure | Profile: {diff_profile.join()} | Entity: {entity_type.name}")
+                    print_colored(logging.ERROR, "Diff Failure", f"Profile: {diff_profile.join()} - Entity: {entity_type.name}")
                     error_count += 1
         except FileNotFoundError as e:
             logger.error(f"Diff Error: {e}")

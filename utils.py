@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from QosEntityData import QosEntityData
 from QosEntities import QosEntitiesEnum
 from QosDiffFile import QosDiffFile, QosType
+from PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,11 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
         if topic_filter:
             if topic_filter in topic_filters_set:
                 profile_name = qos_profile.join()
-                error_str = f"Duplicate topic_filter '{topic_filter}' found in {file_type.name} profile '{qos_profile.join()}'. Only the first occurrence will be used."
+                error_str = f"Topic_filter '{topic_filter}' found in {file_type.name} profile '{qos_profile.join()}'. Only the first occurrence will be used."
                 entity_name = elem.get('name', None)
                 if entity_name:
                     error_str += f" Reference: '{profile_name}::{entity_name}'."
-                logger.warning(error_str)
+                print_colored(logging.WARNING, "Duplicate Topic Filter", error_str)
                 continue
             entities.add(
                 QosEntityData(
@@ -82,12 +83,11 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
             logger.debug(f"{file_type.name} profile added: {qos_profile}")
         elif first_general_profile_found:
             profile_name = qos_profile.join()
-            error_str = f"Multiple {entity_type.value} entities found in {file_type.name} profile '{profile_name}'. Only the first occurrence will be used."
+            error_str = f"{entity_type.value.capitalize()} found in {file_type.name} profile '{profile_name}'. Only the first occurrence will be used."
             entity_name = elem.get('name', None)
             if entity_name:
                 error_str += f" Reference: '{profile_name}::{entity_name}'."
-
-            logger.warning(error_str)
+            print_colored(logging.WARNING, "Multiple Entities", error_str)
             continue
         else:
             # This profile will be handled by the general expansion of LIBRARY::PROFILE.  Don't need to add it here.

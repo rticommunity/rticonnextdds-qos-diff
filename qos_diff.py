@@ -8,6 +8,7 @@ import logging
 from utils import *
 from QosDiff import *
 from LogFormatter import ColorFormatter
+from PrintColor import print_colored
 
 def get_git_repo_root(file_path):
     try:
@@ -163,7 +164,10 @@ def main():
 
     if not args.expand:
         logger.info(f"Total errors: {cumulative_error_count}\n")
-        print(f"Total errors: {cumulative_error_count}\n")
+        if cumulative_error_count:
+            print_colored(logging.ERROR, "Test Failure", f"{cumulative_error_count} Diff Errors")
+        else:
+            print_colored(logging.INFO, "Success", "No Diff Errors")
 
 if __name__ == "__main__":
     main()
