@@ -41,9 +41,9 @@ class QosDiff:
         if not profile_arg and not new_profile_arg:
             base_qos_profiles = set()
             diff_qos_profiles = set()
-            base_qos_profiles.update(find_qos_profiles(self.base.path))
+            base_qos_profiles.update(find_qos_profiles(self.base))
             if not self.expand:
-                diff_qos_profiles.update(find_qos_profiles(self.diff.path))
+                diff_qos_profiles.update(find_qos_profiles(self.diff))
 
             self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
         else:

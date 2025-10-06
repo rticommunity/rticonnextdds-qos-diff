@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 from QosEntityData import QosEntityData
 from QosEntities import QosEntitiesEnum
-from QosDiffFile import QosDiffFile
+from QosDiffFile import QosDiffFile, QosType
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ def find_rti_connext_dds_dirs(search_path):
 
     return matching_dirs
 
-def find_qos_profiles(xml_file):
-    tree = ET.parse(xml_file)
+def find_qos_profiles(xml_file: QosDiffFile):
+    tree = ET.parse(xml_file.path)
     root = tree.getroot()
 
     qos_profiles = set()
@@ -46,26 +46,52 @@ def find_qos_profiles(xml_file):
                 if (profile_name := qos_profile_element.get('name')):
                     profile = QosEntityData(library_name, profile_name)
                     qos_profiles.add(profile)
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datawriter_qos"))
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "datareader_qos"))
-                    qos_profiles.update(find_named_entities(profile, qos_profile_element, "topic_qos"))
+                    logger.debug(f"{xml_file.type.name} profile added: {profile}")
+                    for entity_type in [QosEntitiesEnum.DATAWRITER, QosEntitiesEnum.DATAREADER, QosEntitiesEnum.TOPIC]:
+                        qos_profiles.update(find_named_entities(profile, qos_profile_element, entity_type, xml_file.type))
 
     return qos_profiles
 
-def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_type: str) -> list[QosEntityData]:
-    entities = set()  # use a set to deduplicate automatically
+def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_type: QosEntitiesEnum, file_type: QosType) -> list[QosEntityData]:
+    entities = set()
+    # When Connext reads a Qos file, if multiple profiles have the same topic filter, it only uses the first one.
+    topic_filters_set = set()
+    first_general_profile_found = False
 
-    for elem in node.findall(f'.//{entity_type}'):
-        if (topic_filter := elem.get("topic_filter")):  # walrus operator: assign and check at the same time
+    for elem in node.findall(f'.//{entity_type.value}'):
+        topic_filter = elem.get("topic_filter")
+        if topic_filter:
+            if topic_filter in topic_filters_set:
+                profile_name = qos_profile.join()
+                error_str = f"Duplicate topic_filter '{topic_filter}' found in {file_type.name} profile '{qos_profile.join()}'. Only the first occurrence will be used."
+                entity_name = elem.get('name', None)
+                if entity_name:
+                    error_str += f" Reference: '{profile_name}::{entity_name}'."
+                logger.warning(error_str)
+                continue
             entities.add(
                 QosEntityData(
                     library=qos_profile.library,
                     profile=qos_profile.profile,
                     entity_name=elem.get('name', None),
                     topic_filter=topic_filter,
-                    entity_type=QosEntitiesEnum(entity_type)
+                    entity_type=entity_type
                 )
             )
+            topic_filters_set.add(topic_filter)
+            logger.debug(f"{file_type.name} profile added: {qos_profile}")
+        elif first_general_profile_found:
+            profile_name = qos_profile.join()
+            error_str = f"Multiple {entity_type.value} entities found in {file_type.name} profile '{profile_name}'. Only the first occurrence will be used."
+            entity_name = elem.get('name', None)
+            if entity_name:
+                error_str += f" Reference: '{profile_name}::{entity_name}'."
+
+            logger.warning(error_str)
+            continue
+        else:
+            # This profile will be handled by the general expansion of LIBRARY::PROFILE.  Don't need to add it here.
+            first_general_profile_found = True
 
     return list(entities)
 
