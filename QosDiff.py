@@ -69,7 +69,7 @@ class QosDiff:
     def run_diff(self):
         cumulative_error_count = 0
 
-        for index, (base_profile, diff_profile) in enumerate(self.qos_profiles):
+        for base_profile, diff_profile in self.qos_profiles:
             error_count = 0
             try:
                 # Name the folder after the new profile, if the names are different (index 1)
@@ -105,12 +105,8 @@ class QosDiff:
                 cumulative_error_count += 1
                 if self.break_on_failure:
                     raise BreakLoop(cumulative_error_count)
-                else:
-                    print()
 
             cumulative_error_count += error_count
-            if (error_count > 0) or (index == len(self.qos_profiles) - 1):
-                print()
 
         return cumulative_error_count
 

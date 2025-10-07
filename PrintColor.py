@@ -11,7 +11,7 @@ COLORS = {
 RESET = '\033[0m'
 
 
-def print_colored(level: int, err_str: str, message: str, ) -> None:
+def print_colored(level: int, inside_brace: str, message: str, ) -> None:
     """
     Print a message in a color corresponding to a logging level constant.
 
@@ -20,7 +20,7 @@ def print_colored(level: int, err_str: str, message: str, ) -> None:
         message (str): The message to print.
     """
     color = COLORS.get(level, '')
-    print(f"[{color}{err_str}{RESET}] {message}")
+    print(f"[{color}{inside_brace}{RESET}] {message}")
 
 if __name__ == "__main__":
     print_colored(logging.DEBUG, "Debug Message")

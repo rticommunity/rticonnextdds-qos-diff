@@ -117,9 +117,6 @@ def main():
         logging.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
         sys.exit(1)
 
-    # Formatting
-    print()
-
     # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
     if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
         os.chdir('..')
@@ -142,7 +139,6 @@ def main():
         qos_diff.diff.version = qos_diff.base.version
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
-    print()
     if args.delta and not args.expand:
         print("Warning: --delta only applies when --expand is also specified.  Ignoring --delta.\n")
 
@@ -163,7 +159,7 @@ def main():
         sys.exit(1)
 
     if not args.expand:
-        logger.info(f"Total errors: {cumulative_error_count}\n")
+        logger.info(f"Total errors: {cumulative_error_count}")
         if cumulative_error_count:
             print_colored(logging.ERROR, "Test Failure", f"{cumulative_error_count} Diff Errors")
         else:
