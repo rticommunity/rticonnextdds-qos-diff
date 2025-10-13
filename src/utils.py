@@ -4,15 +4,17 @@ import re
 import subprocess
 import xml.etree.ElementTree as ET
 
-from QosEntityData import QosEntityData
-from QosEntities import QosEntitiesEnum
-from QosDiffFile import QosDiffFile, QosType
-from PrintColor import print_colored
+from src.QosEntityData import QosEntityData
+from src.QosEntities import QosEntitiesEnum
+from src.QosDiffFile import QosDiffFile, QosType
+from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
-RTI_XML_UTILITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-    'rticonnextdds-xml-output-utility/')
+RTI_XML_UTILITY_PATH = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), # .
+    '..',
+    'rticonnextdds-xml-output-utility/'))
 
 class NextProfile(Exception):
     pass

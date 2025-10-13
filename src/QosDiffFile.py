@@ -2,7 +2,7 @@ import logging
 import os
 from enum import IntEnum
 
-from QosEntities import QosEntitiesEnum
+from src.QosEntities import QosEntitiesEnum
 
 logger = logging.getLogger(__name__)
 

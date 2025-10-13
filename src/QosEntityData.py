@@ -1,8 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from QosEntities import QosEntitiesEnum
 from typing import Optional
 import logging
+
+from src.QosEntities import QosEntitiesEnum
 
 logger = logging.getLogger(__name__)
 

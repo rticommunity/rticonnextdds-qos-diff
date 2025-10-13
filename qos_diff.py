@@ -5,10 +5,10 @@ import argparse
 import shutil
 import logging
 
-from utils import *
-from QosDiff import *
-from LogFormatter import ColorFormatter
-from PrintColor import print_colored
+from src.utils import *
+from src.QosDiff import *
+from src.LogFormatter import ColorFormatter
+from src.PrintColor import print_colored
 
 def get_git_repo_root(file_path):
     try:
