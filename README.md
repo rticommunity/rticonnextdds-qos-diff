@@ -2,11 +2,12 @@
 
 This script will allow you to diff Qos XML files across different versions of Connext and will expand Qos profiles to account for profile inheritance and composition.
 
-Requirements:
+## Prerequisites
 
-- Python
+- Python 3.8+ (tested with Python 3.12)
 - cmake
-- One or more Connext installations version >= 6.1.0
+- git (for commit-based diffing)
+- One or more RTI Connext DDS installations (version >= 6.1.0)
 
 ## Cloning
 
@@ -91,3 +92,15 @@ python3 qos_diff.py --qos_file <QOS_FILE> --diff_file <DIFF_FILE> --profile <PRO
 # Diff PROFILE in QOS_FILE against NEW_PROFILE in DIFF_FILE
 python3 qos_diff.py --qos_file <QOS_FILE> --diff_file <DIFF_FILE> --profile <PROFILE> --new_profile <NEW_PROFILE>
 ```
+
+## Troubleshooting
+
+### Build Issues
+- Ensure `NDDSHOME` and `CONNEXTDDS_ARCH` environment variables are set if using RTI scripts
+- Verify cmake is installed and accessible in your PATH
+- Check that your Connext installation directory follows the naming convention `rti_connext_dds-x.x.x`
+
+### Runtime Issues
+- Check the `output/log.txt` file for detailed error messages
+- Ensure the QoS XML file is valid and well-formed
+- Verify that specified profiles exist in the XML file
