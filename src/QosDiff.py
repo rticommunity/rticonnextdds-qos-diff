@@ -2,7 +2,7 @@ import logging
 import os
 import difflib
 
-from src.utils import *
+from src.Utilities import *
 from src.QosEntities import *
 from src.QosDiffFile import QosDiffFile, QosType
 from src.PrintColor import print_colored

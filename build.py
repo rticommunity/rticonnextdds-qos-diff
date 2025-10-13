@@ -3,7 +3,7 @@ import subprocess
 import sys
 import argparse
 
-from src.utils import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
+from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
 
 def run_command(command, cwd=None):
     result = subprocess.run(command, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
