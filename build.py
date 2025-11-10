@@ -2,22 +2,31 @@ import os
 import subprocess
 import sys
 import argparse
+import logging
 
 from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
+from src.PrintColor import print_colored
+
+# Configure logging to file
+log_path = os.path.join(os.getcwd(), "./output/build.log")
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+# File handler - save detailed logs
+os.makedirs(os.path.dirname(log_path), exist_ok=True)
+file_handler = logging.FileHandler(log_path, mode='w')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+logger.addHandler(file_handler)
 
 def run_command(command, cwd=None):
     result = subprocess.run(command, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
-        print(f"Error: Command '{command}' failed with return code {result.returncode}.")
-        print(result.stdout.decode())
-        print(result.stderr.decode())
-        sys.exit(1)
-    else:
-        # print(result.stdout.decode())
-        pass
+        logger.error(result.stdout.decode())
+        logger.error(result.stderr.decode())
+        raise subprocess.CalledProcessError(result.returncode, command)
 
 def main():
-
     # Check for environment variables first
     env_connext_dir = os.environ.get('NDDSHOME')
     env_connext_arch = os.environ.get('CONNEXTDDS_ARCH')
@@ -25,7 +34,7 @@ def main():
     if env_connext_dir and env_connext_arch:
         connext_dir = env_connext_dir
         connext_arch = env_connext_arch
-        print(f"Using environment variables: NDDSHOME={connext_dir}, CONNEXTDDS_ARCH={connext_arch}")
+        print_colored(logging.INFO, "Info", f"Using environment variables: NDDSHOME={connext_dir}, CONNEXTDDS_ARCH={connext_arch}")
     else:
         # Argument parser fallback
         parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
@@ -35,6 +44,9 @@ def main():
         connext_dir = args.connext_dir
         connext_arch = args.connext_arch
 
+    logger.debug(f"Connext Directory: {connext_dir}")
+    logger.debug(f"Connext Architecture: {connext_arch}")
+
     connext_install_root = os.path.dirname(connext_dir)
 
     connext_installations = set()
@@ -43,33 +55,40 @@ def main():
     connext_installations = {x for x in connext_installations if x >= 'rti_connext_dds-6.1.0'}
 
     if not connext_installations:
-        print("No RTI Connext DDS installations found.")
+        print_colored(logging.ERROR, "Error", "No RTI Connext DDS installations found.")
         sys.exit(1)
 
-    print('RTI Connext DDS Installations >= Connext 6.1.0 Found:')
+    print_colored(logging.INFO, "Connext Versions", "RTI Connext DDS Installations >= Connext 6.1.0 Found:")
     for installation in connext_installations:
         print(f"  {installation}")
+        logger.debug(f"Found installation: {installation}")
     print()
 
     print(f"Building for RTI Connext DDS installations:")
 
     for installation in connext_installations:
-        build_dir = os.path.join(RTI_XML_UTILITY_PATH, 'build', installation)
+        try:
+            build_dir = os.path.join(RTI_XML_UTILITY_PATH, 'build', installation)
 
-        # Create the build directory if it doesn't exist
-        if not os.path.exists(build_dir):
-            os.makedirs(build_dir)
+            # Create the build directory if it doesn't exist
+            if not os.path.exists(build_dir):
+                os.makedirs(build_dir)
 
-        # Run CMake to configure the project
-        cmake_command = f'cmake -DCONNEXTDDS_DIR={os.path.join(connext_install_root, installation)} \
-            -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH}'
-        run_command(cmake_command, cwd=build_dir)
+            # Run CMake to configure the project
+            cmake_command = f'cmake -DCONNEXTDDS_DIR={os.path.join(connext_install_root, installation)} \
+                -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH}'
+            run_command(cmake_command, cwd=build_dir)
 
-        # Run the build command
-        build_command = 'cmake --build .'
-        run_command(build_command, cwd=build_dir)
+            # Run the build command
+            build_command = 'cmake --build .'
+            run_command(build_command, cwd=build_dir)
 
-        print(f"  {installation} built successfully.")
+            print_colored(logging.INFO, "Success", f"{installation} built successfully.")
+            logger.info(f"{installation} built successfully.")
+        except subprocess.CalledProcessError:
+            print_colored(logging.ERROR, "Failed", f"Failed to build for {installation}.")
+            logger.error(f"Failed to build for {installation}.")
+            continue
 
 if __name__ == "__main__":
     main()
