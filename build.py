@@ -3,6 +3,7 @@ import subprocess
 import sys
 import argparse
 import logging
+import shutil
 
 from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
 from src.PrintColor import print_colored
@@ -86,6 +87,7 @@ def main():
             print_colored(logging.INFO, "Success", f"{installation} built successfully.")
             logger.info(f"{installation} built successfully.")
         except subprocess.CalledProcessError:
+            shutil.rmtree(build_dir)
             print_colored(logging.ERROR, "Failed", f"Failed to build for {installation}.")
             logger.error(f"Failed to build for {installation}.")
             continue
