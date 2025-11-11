@@ -23,6 +23,9 @@ class BreakLoop(Exception):
     def __init__(self, value):
         self.error_count = value
 
+class BlankProfile(Exception):
+    pass
+
 def find_rti_connext_dds_dirs(search_path):
     pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
     matching_dirs = set()  # Use a set to ensure unique values
@@ -98,6 +101,8 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
     return list(entities)
 
 def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
+    if qos_profile == QosEntityData():
+        raise BlankProfile()
     qos_profile_str, _ = qos_profile.split_entity_name()
     topic_filter = qos_profile.get_topic_filter()
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))

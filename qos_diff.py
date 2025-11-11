@@ -146,6 +146,7 @@ def main():
     qos_diff.get_profiles(args.profile, args.new_profile)
 
     cumulative_error_count = 0
+    print()
     try:
         if args.expand:
             qos_diff.run_expand(args.delta)
@@ -163,7 +164,7 @@ def main():
         if cumulative_error_count:
             print_colored(logging.ERROR, "Test Failure", f"{cumulative_error_count} Diff Errors")
         else:
-            print_colored(logging.INFO, "Success", "No Diff Errors")
+            print_colored(logging.INFO, "Test Pass", "No Diff Errors")
 
 if __name__ == "__main__":
     main()

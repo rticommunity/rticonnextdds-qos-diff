@@ -75,6 +75,10 @@ class QosDiff:
                 # Name the folder after the new profile, if the names are different (index 1)
                 current_profile_name = QosEntityData.get_common_profile_name((base_profile, diff_profile))
                 print(f"Diffing Qos Profile: {current_profile_name}")
+                if base_profile.is_default() or diff_profile.is_default():
+                    warning_string = f"Profile {current_profile_name} is not in both Qos files.  Expanding the existing profile only."
+                    logger.debug(warning_string)
+                    print_colored(logging.WARNING, "Empty Profile", warning_string)
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
 
@@ -88,8 +92,30 @@ class QosDiff:
                     if named_entity_profile and  diff_profile.entity_type != entity_type:
                         continue
 
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type)
-                    expand_qos_profile(self.diff, curr_diff_dir, diff_profile, entity_type)
+                    # Expand both QoS files regardless if a BlankProfile is found, raise any other exceptions
+                    exceptions = []
+                    for args in [
+                            (self.base, curr_diff_dir, base_profile, entity_type),
+                            (self.diff, curr_diff_dir, diff_profile, entity_type)]:
+                        try:
+                            expand_qos_profile(*args)
+                        except Exception as e:
+                            exceptions.append(e)
+                            error_count += 1
+                            if isinstance(e, BlankProfile):
+                                logger.debug(f"Blank profile encountered for entity type: {entity_type.name}")
+                            else:
+                                logger.error(f"Error expanding QoS profile for {args[2]}: {e}")
+
+                    # After both calls:
+                    non_blank_exceptions = [e for e in exceptions if not isinstance(e, BlankProfile)]
+
+                    if non_blank_exceptions:
+                        # raise the first non-BlankProfile exception
+                        raise non_blank_exceptions[0]
+                    elif exceptions:
+                        # Only BlankProfile errors occurred, move on to next entity.  No sense in comparing.
+                        continue
 
                     error_count += self._compare_qos_files(curr_diff_dir, entity_type, (base_profile, diff_profile))
 
@@ -106,7 +132,11 @@ class QosDiff:
                 if self.break_on_failure:
                     raise BreakLoop(cumulative_error_count)
 
-            cumulative_error_count += error_count
+            if error_count == 0:
+                print_colored(logging.INFO, "Success", f"Profile: {current_profile_name}\n")
+            else:
+                print_colored(logging.ERROR, "Failure", f"Profile: {current_profile_name}\n")
+                cumulative_error_count += error_count
 
         return cumulative_error_count
 
