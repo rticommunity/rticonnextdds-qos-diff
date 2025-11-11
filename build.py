@@ -52,8 +52,9 @@ def main():
 
     connext_installations = set()
     connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
-    # Filter out installations that are not at least version 6.1.0
-    connext_installations = {x for x in connext_installations if x >= 'rti_connext_dds-6.1.0'}
+    # Filter out installations that are not at least version 6.1.0, convert to list and sort
+    connext_installations = [x for x in connext_installations if x >= 'rti_connext_dds-6.1.0']
+    connext_installations.sort()
 
     if not connext_installations:
         print_colored(logging.ERROR, "Error", "No RTI Connext DDS installations found.")
