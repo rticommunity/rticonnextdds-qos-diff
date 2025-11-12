@@ -76,9 +76,22 @@ class QosDiff:
                 current_profile_name = QosEntityData.get_common_profile_name((base_profile, diff_profile))
                 print(f"Diffing Qos Profile: {current_profile_name}")
                 if base_profile.is_default() or diff_profile.is_default():
-                    warning_string = f"Profile {current_profile_name} is not in both Qos files.  Expanding the existing profile only."
+                    error_count += 1
+
+                    if base_profile.is_default():
+                        warning_string = (
+                            f"Profile {current_profile_name} is missing in the base Qos file. "
+                            "Only expanding the diff profile."
+                        )
+                    else:  # diff_profile.is_default()
+                        warning_string = (
+                            f"Profile {current_profile_name} is missing in the diff Qos file. "
+                            "Only expanding the base profile."
+                        )
+
                     logger.debug(warning_string)
                     print_colored(logging.WARNING, "Empty Profile", warning_string)
+
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
                 os.makedirs(curr_diff_dir)
 
@@ -101,11 +114,11 @@ class QosDiff:
                             expand_qos_profile(*args)
                         except Exception as e:
                             exceptions.append(e)
-                            error_count += 1
                             if isinstance(e, BlankProfile):
                                 logger.debug(f"Blank profile encountered for entity type: {entity_type.name}")
                             else:
                                 logger.error(f"Error expanding QoS profile for {args[2]}: {e}")
+                                raise e
 
                     # After both calls:
                     non_blank_exceptions = [e for e in exceptions if not isinstance(e, BlankProfile)]

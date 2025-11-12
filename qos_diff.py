@@ -162,7 +162,8 @@ def main():
     if not args.expand:
         logger.info(f"Total errors: {cumulative_error_count}")
         if cumulative_error_count:
-            print_colored(logging.ERROR, "Test Failure", f"{cumulative_error_count} Diff Errors")
+            error_str = f"{cumulative_error_count} Diff Error" + ("s" if cumulative_error_count > 1 else "")
+            print_colored(logging.ERROR, "Test Failure", error_str)
         else:
             print_colored(logging.INFO, "Test Pass", "No Diff Errors")
 
