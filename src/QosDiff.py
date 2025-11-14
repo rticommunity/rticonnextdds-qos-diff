@@ -154,32 +154,68 @@ class QosDiff:
         return cumulative_error_count
 
     def _compare_qos_files(self, profile_dir: str, entity_type: QosEntitiesEnum, qos_profile: tuple[QosEntityData, QosEntityData]) -> int:
+        def remove_trigger_lines(lines: list[str]) -> list[str]:
+            """
+            If a line contains any trigger string, the following line is removed.
+            """
+            # These are properties that will always differ and should be ignored in the diff
+            TRIGGER_STRINGS = [
+                "<name>dds.sys_info.process_id</name>",
+                "<name>dds.sys_info.executable_filepath</name>",
+                "<name>dds.sys_info.creation_timestamp</name>"
+            ]
+
+            cleaned = []
+            skip_next = False
+
+            for i, line in enumerate(lines):
+                if skip_next:
+                    skip_next = False
+                    continue
+
+                if any(t in line for t in TRIGGER_STRINGS):
+                    cleaned.append(line)
+                    skip_next = True
+                else:
+                    cleaned.append(line)
+
+            return cleaned
+
         error_count = 0
         base_profile, diff_profile = qos_profile
 
         try:
-            with open(os.path.join(profile_dir, f'{entity_type.value}_base.xml'), 'r') as file1, open(os.path.join(profile_dir, f'{entity_type.value}_diff.xml'), 'r') as file2:
+            with open(os.path.join(profile_dir, f'{entity_type.value}_base.xml'), 'r') as file1, \
+                open(os.path.join(profile_dir, f'{entity_type.value}_diff.xml'), 'r') as file2:
+
                 file1_lines = file1.readlines()
                 file2_lines = file2.readlines()
 
-            # Perform diff and get the line count, convert the iterator to a list
-            diff_lines = list(difflib.unified_diff(file1_lines, file2_lines, fromfile=f'{entity_type.value}_base.xml', tofile=f'{entity_type.value}_diff.xml', lineterm=''))
+            # Clean both files before diffing
+            file1_lines = remove_trigger_lines(file1_lines)
+            file2_lines = remove_trigger_lines(file2_lines)
+
+            # Perform diff
+            diff_lines = list(
+                difflib.unified_diff(
+                    file1_lines,
+                    file2_lines,
+                    fromfile=f'{entity_type.value}_base.xml',
+                    tofile=f'{entity_type.value}_diff.xml',
+                    lineterm=''
+                )
+            )
+
             diff_line_count = len(diff_lines)
 
-            # Write the diff to the file
+            # Write the result
             with open(os.path.join(profile_dir, f'{entity_type.value}_result.txt'), 'w') as diff_file:
                 diff_file.writelines(diff_lines)
 
-            if entity_type == QosEntitiesEnum.DOMAIN_PARTICIPANT:
-                # diff_line_count will be 11 if process_id is only difference
-                if diff_line_count != 11:
-                    print_colored(logging.ERROR, "Diff Failure", f"Profile: {base_profile.join()} - Entity: {entity_type.name}")
-                    error_count += 1
-            else:
-                # Any difference in the profile is considered a failure
-                if diff_line_count != 0:
-                    print_colored(logging.ERROR, "Diff Failure", f"Profile: {diff_profile.join()} - Entity: {entity_type.name}")
-                    error_count += 1
+            # Any difference in the profile is considered a failure
+            if diff_line_count != 0:
+                print_colored(logging.ERROR, "Diff Failure", f"Profile: {diff_profile.join()} - Entity: {entity_type.name}")
+                error_count += 1
         except FileNotFoundError as e:
             logger.error(f"Diff Error: {e}")
             diff_missing = ('_diff.xml' in e.filename)
