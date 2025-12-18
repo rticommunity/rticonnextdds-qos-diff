@@ -162,7 +162,8 @@ class QosDiff:
             TRIGGER_STRINGS = [
                 "<name>dds.sys_info.process_id</name>",
                 "<name>dds.sys_info.executable_filepath</name>",
-                "<name>dds.sys_info.creation_timestamp</name>"
+                "<name>dds.sys_info.creation_timestamp</name>",
+                "<name>dds.sys_info.execution_timestamp</name>"
             ]
 
             cleaned = []
