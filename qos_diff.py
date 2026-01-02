@@ -49,7 +49,7 @@ def select_option(options):
             if 1 <= choice < len(options_list):
                 return options_list[choice - 1]
             elif choice == len(options_list):
-                print("\nExiting.  No diff will be performed.")
+                print_colored(logging.WARNING, "Exiting", "No diff will be performed.")
                 sys.exit(0)
             else:
                 print(f"Invalid choice. Please enter a number between 1 and {len(options_list)}.")
