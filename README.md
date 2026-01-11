@@ -52,7 +52,12 @@ usage: qos_diff.py [-h] --qos_file QOS_FILE [--diff_file DIFF_FILE] [--commit CO
 --versions          Compare across different versions of Connext.
 --expand            Expand the Qos profile.  Do not diff.
 --delta             Only show the delta from default profile values.  Only valid with --expand.
+--ignore_nddshome   Ignore NDDSHOME as the default Connext version.
 </pre>
+
+### Connext Version
+
+Because QoS configuration evolves across Connext releases, it is important to use the correct version of the underlying version-specific tool. QosDiff will attempt to determine the appropriate version automatically using the `NDDSHOME` environment variable. If this lookup fails, if the user specifies `--ignore_nddshome`, or if the diff is performed across different Connext versions using `--versions`, the user will be prompted to select the version(s) to use.
 
 ### Expand Qos Files
 

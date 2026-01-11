@@ -141,13 +141,6 @@ def main():
         logging.error("Error: No RTI Connext DDS installations found.")
         sys.exit(1)
 
-    # Set defaults
-    nddshome_used = False
-    if env_connext_dir in connext_installations:
-        qos_diff.base.version = env_connext_dir
-        qos_diff.diff.version = env_connext_dir
-        nddshome_used = True
-
     if(args.versions):
         if len(connext_installations) < 2:
             logging.error("Error: Two RTI Connext DDS installations are required to diff versions.")
@@ -156,14 +149,14 @@ def main():
         qos_diff.base.version = select_option(connext_installations)
         print('\nPlease select a Connext version for the diff Qos file:')
         qos_diff.diff.version = select_option(connext_installations)
-    elif args.ignore_nddshome or not nddshome_used:
+    elif env_connext_dir in connext_installations and not args.ignore_nddshome:
+        qos_diff.base.version = qos_diff.diff.version = env_connext_dir
+    else:
         if len(connext_installations) > 1:
             print('Please select a Connext version to use:')
-            qos_diff.base.version = select_option(connext_installations)
-            qos_diff.diff.version = qos_diff.base.version
+            qos_diff.base.version = qos_diff.diff.version = select_option(connext_installations)
         else:
-            qos_diff.base.version = list(connext_installations)[0]
-            qos_diff.diff.version = list(connext_installations)[0]
+            qos_diff.base.version = qos_diff.diff.version = next(iter(connext_installations))
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
     if args.delta and not args.expand:
