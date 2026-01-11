@@ -14,6 +14,7 @@
 from enum import Enum
 
 class QosEntitiesEnum(Enum):
+    DOMAIN_PARTICIPANT_FACTORY = 'domain_participant_factory_qos'
     DOMAIN_PARTICIPANT = 'domain_participant_qos'
     PUBLISHER = 'publisher_qos'
     DATAWRITER = 'datawriter_qos'
