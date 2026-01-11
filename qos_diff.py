@@ -69,6 +69,7 @@ def parse_arguments():
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
     parser.add_argument('--expand', action='store_true', help='Only expand profiles.  Do not diff.')
     parser.add_argument('--delta', action='store_true', help='Only show the delta from default profile values.')
+    parser.add_argument('--ignore_nddshome', action='store_true', help='Ignore NDDSHOME as the default Connext version.')
     return parser.parse_args()
 
 def main():
@@ -135,9 +136,18 @@ def main():
         os.chdir('..')
 
     connext_installations = find_rti_connext_dds_dirs(os.path.join(RTI_XML_UTILITY_PATH, 'build'))
+    env_connext_dir = (m := re.search(r".*/(rti_connext_dds-[^/]+)$", os.environ.get('NDDSHOME'))) and m.group(1)
     if not connext_installations:
         logging.error("Error: No RTI Connext DDS installations found.")
         sys.exit(1)
+
+    # Set defaults
+    nddshome_used = False
+    if env_connext_dir in connext_installations:
+        qos_diff.base.version = env_connext_dir
+        qos_diff.diff.version = env_connext_dir
+        nddshome_used = True
+
     if(args.versions):
         if len(connext_installations) < 2:
             logging.error("Error: Two RTI Connext DDS installations are required to diff versions.")
@@ -146,13 +156,14 @@ def main():
         qos_diff.base.version = select_option(connext_installations)
         print('\nPlease select a Connext version for the diff Qos file:')
         qos_diff.diff.version = select_option(connext_installations)
-    elif len(connext_installations) > 1:
-        print('Please select a Connext version to use:')
-        qos_diff.base.version = select_option(connext_installations)
-        qos_diff.diff.version = qos_diff.base.version
-    else:
-        qos_diff.base.version = list(connext_installations)[0]
-        qos_diff.diff.version = list(connext_installations)[0]
+    elif args.ignore_nddshome or not nddshome_used:
+        if len(connext_installations) > 1:
+            print('Please select a Connext version to use:')
+            qos_diff.base.version = select_option(connext_installations)
+            qos_diff.diff.version = qos_diff.base.version
+        else:
+            qos_diff.base.version = list(connext_installations)[0]
+            qos_diff.diff.version = list(connext_installations)[0]
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
     if args.delta and not args.expand:
