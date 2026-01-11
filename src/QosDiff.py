@@ -14,6 +14,7 @@
 import logging
 import os
 import difflib
+import platform
 
 from src.Utilities import *
 from src.QosEntities import *
@@ -70,6 +71,8 @@ class QosDiff:
             profile = base_profile.join()
             print(f"Expanding Qos Profile: {profile}")
             curr_diff_dir = os.path.join(self.out_dir, profile)
+            if platform.system() == 'Windows':
+                curr_diff_dir = curr_diff_dir.replace("::", "__")
             os.makedirs(curr_diff_dir)
             if base_profile.has_topic_filter():
                 # This has a topic filter, only expand that one
@@ -106,6 +109,8 @@ class QosDiff:
                     print_colored(logging.WARNING, "Empty Profile", warning_string)
 
                 curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
+                if platform.system() == 'Windows':
+                    curr_diff_dir = curr_diff_dir.replace("::", "__")
                 os.makedirs(curr_diff_dir)
 
                 if base_profile.entity_type != diff_profile.entity_type:

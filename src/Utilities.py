@@ -14,8 +14,11 @@
 import logging
 import os
 import re
+import platform
 import subprocess
 import xml.etree.ElementTree as ET
+
+from pathlib import Path
 
 from src.QosEntityData import QosEntityData
 from src.QosEntities import QosEntitiesEnum
@@ -28,6 +31,8 @@ RTI_XML_UTILITY_PATH = os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), # .
     '..',
     'rticonnextdds-xml-output-utility/'))
+
+logger.debug(f"RTI_XML_UTILITY_PATH set to: {RTI_XML_UTILITY_PATH}")
 
 class NextProfile(Exception):
     pass
@@ -114,13 +119,25 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
     return list(entities)
 
 def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
+    def create_executable_path():
+        # Windows build tree is slightly different, and binary has .exe extension
+        is_windows = platform.system() == "Windows"
+        path = (
+            Path(RTI_XML_UTILITY_PATH)
+            / "build"
+            / qos_file.version
+            / ("Release" if is_windows else "")
+            / ("rtixmloutpututility.exe" if is_windows else "rtixmloutpututility")
+        )
+        return str(path)
+
     if qos_profile == QosEntityData():
         raise BlankProfile()
     qos_profile_str, _ = qos_profile.split_entity_name()
     topic_filter = qos_profile.get_topic_filter()
     outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))
     args = [
-        os.path.join(RTI_XML_UTILITY_PATH, 'build', qos_file.version, 'rtixmloutpututility'),
+        create_executable_path(),
         '-qosFile', qos_file.path,
         '-outputFile', outfile,
         '-qosProfile', qos_profile_str,
@@ -130,6 +147,8 @@ def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEn
         args += ['-topicName', topic_filter]
     if delta:
         args.append('-deltaProfile')
+
+    logger.debug(f"Running RTI XML Output Utility with args: {' '.join(args)}")
 
     result = subprocess.run(args, capture_output=True, text=True)
     if result.stdout:

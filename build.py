@@ -16,7 +16,10 @@ import subprocess
 import sys
 import argparse
 import logging
+import platform
 import shutil
+
+from pathlib import Path
 
 from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
 from src.PrintColor import print_colored
@@ -58,10 +61,11 @@ def main():
         connext_dir = args.connext_dir
         connext_arch = args.connext_arch
 
+    connext_dir = Path(connext_dir).resolve()
+    connext_install_root = connext_dir.parent
+
     logger.debug(f"Connext Directory: {connext_dir}")
     logger.debug(f"Connext Architecture: {connext_arch}")
-
-    connext_install_root = os.path.dirname(connext_dir)
 
     connext_installations = set()
     connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
@@ -90,12 +94,17 @@ def main():
                 os.makedirs(build_dir)
 
             # Run CMake to configure the project
-            cmake_command = f'cmake -DCONNEXTDDS_DIR={os.path.join(connext_install_root, installation)} \
-                -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH}'
+            cmake_command = f'cmake -DCONNEXTDDS_DIR="{os.path.join(connext_install_root, installation)}" \
+                -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH} \
+                -DCMAKE_BUILD_TYPE=Release'
+
+            if platform.system() == 'Windows':
+                cmake_command += ' -A x64'
+
             run_command(cmake_command, cwd=build_dir)
 
             # Run the build command
-            build_command = 'cmake --build .'
+            build_command = 'cmake --build . --config Release'
             run_command(build_command, cwd=build_dir)
 
             print_colored(logging.INFO, "Success", f"{installation} built successfully.")
