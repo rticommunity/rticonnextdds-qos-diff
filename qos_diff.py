@@ -146,10 +146,13 @@ def main():
         qos_diff.base.version = select_option(connext_installations)
         print('\nPlease select a Connext version for the diff Qos file:')
         qos_diff.diff.version = select_option(connext_installations)
-    else:
+    elif len(connext_installations) > 1:
         print('Please select a Connext version to use:')
         qos_diff.base.version = select_option(connext_installations)
         qos_diff.diff.version = qos_diff.base.version
+    else:
+        qos_diff.base.version = list(connext_installations)[0]
+        qos_diff.diff.version = list(connext_installations)[0]
 
     logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
     if args.delta and not args.expand:
