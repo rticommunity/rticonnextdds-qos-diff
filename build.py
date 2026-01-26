@@ -49,7 +49,7 @@ def main():
     env_connext_arch = os.environ.get('CONNEXTDDS_ARCH')
 
     if env_connext_dir and env_connext_arch:
-        connext_dir = env_connext_dir
+        connext_dir = Path(env_connext_dir)
         connext_arch = env_connext_arch
         print_colored(logging.INFO, "Info", f"Using environment variables: NDDSHOME={connext_dir}, CONNEXTDDS_ARCH={connext_arch}")
     else:
