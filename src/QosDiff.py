@@ -15,6 +15,7 @@ import logging
 import os
 import difflib
 import platform
+from pathlib import Path
 
 from src.Utilities import *
 from src.QosEntities import *
@@ -70,10 +71,10 @@ class QosDiff:
         for base_profile, _ in self.qos_profiles:
             profile = base_profile.join()
             print(f"Expanding Qos Profile: {profile}")
-            curr_diff_dir = os.path.join(self.out_dir, profile)
+            curr_diff_dir = self.out_dir / profile
             if platform.system() == 'Windows':
-                curr_diff_dir = curr_diff_dir.replace("::", "__")
-            os.makedirs(curr_diff_dir)
+                curr_diff_dir = Path(str(curr_diff_dir).replace("::", "__"))
+            curr_diff_dir.mkdir(parents=True, exist_ok=True)
             if base_profile.has_topic_filter():
                 # This has a topic filter, only expand that one
                 expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type, profile_delta)
@@ -108,10 +109,10 @@ class QosDiff:
                     logger.debug(warning_string)
                     print_colored(logging.WARNING, "Empty Profile", warning_string)
 
-                curr_diff_dir = os.path.join(self.out_dir, current_profile_name)
+                curr_diff_dir = self.out_dir / current_profile_name
                 if platform.system() == 'Windows':
-                    curr_diff_dir = curr_diff_dir.replace("::", "__")
-                os.makedirs(curr_diff_dir)
+                    curr_diff_dir = Path(str(curr_diff_dir).replace("::", "__"))
+                curr_diff_dir.mkdir(parents=True, exist_ok=True)
 
                 if base_profile.entity_type != diff_profile.entity_type:
                     logger.error(f"Entity type mismatch: {base_profile} vs {diff_profile}")
@@ -151,8 +152,8 @@ class QosDiff:
                     error_count += self._compare_qos_files(curr_diff_dir, entity_type, (base_profile, diff_profile))
 
                     if self.rm:
-                        os.remove(os.path.join(curr_diff_dir, self.base.get_entity_path(entity_type)))
-                        os.remove(os.path.join(curr_diff_dir, self.diff.get_entity_path(entity_type)))
+                        (curr_diff_dir / self.base.get_entity_path(entity_type)).unlink()
+                        (curr_diff_dir / self.diff.get_entity_path(entity_type)).unlink()
 
                     if error_count > 0 and self.break_on_failure:
                         cumulative_error_count += error_count
@@ -171,7 +172,7 @@ class QosDiff:
 
         return cumulative_error_count
 
-    def _compare_qos_files(self, profile_dir: str, entity_type: QosEntitiesEnum, qos_profile: tuple[QosEntityData, QosEntityData]) -> int:
+    def _compare_qos_files(self, profile_dir: Path, entity_type: QosEntitiesEnum, qos_profile: tuple[QosEntityData, QosEntityData]) -> int:
         def remove_trigger_lines(lines: list[str]) -> list[str]:
             """
             If a line contains any trigger string, the following line is removed.
@@ -204,8 +205,8 @@ class QosDiff:
         base_profile, diff_profile = qos_profile
 
         try:
-            with open(os.path.join(profile_dir, f'{entity_type.value}_base.xml'), 'r') as file1, \
-                open(os.path.join(profile_dir, f'{entity_type.value}_diff.xml'), 'r') as file2:
+            with open(profile_dir / f'{entity_type.value}_base.xml', 'r') as file1, \
+                open(profile_dir / f'{entity_type.value}_diff.xml', 'r') as file2:
 
                 file1_lines = file1.readlines()
                 file2_lines = file2.readlines()
@@ -228,7 +229,7 @@ class QosDiff:
             diff_line_count = len(diff_lines)
 
             # Write the result
-            with open(os.path.join(profile_dir, f'{entity_type.value}_result.txt'), 'w') as diff_file:
+            with open(profile_dir / f'{entity_type.value}_result.txt', 'w') as diff_file:
                 diff_file.writelines(diff_lines)
 
             # Any difference in the profile is considered a failure

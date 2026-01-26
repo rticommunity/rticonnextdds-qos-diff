@@ -27,10 +27,7 @@ from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
-RTI_XML_UTILITY_PATH = os.path.normpath(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), # .
-    '..',
-    'rticonnextdds-xml-output-utility/'))
+RTI_XML_UTILITY_PATH = Path(__file__).parent.parent / 'rticonnextdds-xml-output-utility'
 
 logger.debug(f"RTI_XML_UTILITY_PATH set to: {RTI_XML_UTILITY_PATH}")
 
@@ -44,7 +41,7 @@ class BreakLoop(Exception):
 class BlankProfile(Exception):
     pass
 
-def find_rti_connext_dds_dirs(search_path):
+def find_rti_connext_dds_dirs(search_path: Path):
     pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
     matching_dirs = set()  # Use a set to ensure unique values
 
@@ -118,28 +115,28 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
 
     return list(entities)
 
-def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
+def expand_qos_profile(qos_file: QosDiffFile, diff_path: Path, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
     def create_executable_path():
         # Windows build tree is slightly different, and binary has .exe extension
         is_windows = platform.system() == "Windows"
         path = (
-            Path(RTI_XML_UTILITY_PATH)
+            RTI_XML_UTILITY_PATH
             / "build"
             / qos_file.version
             / ("Release" if is_windows else "")
             / ("rtixmloutpututility.exe" if is_windows else "rtixmloutpututility")
         )
-        return str(path)
+        return path
 
     if qos_profile == QosEntityData():
         raise BlankProfile()
     qos_profile_str, _ = qos_profile.split_entity_name()
     topic_filter = qos_profile.get_topic_filter()
-    outfile = os.path.join(diff_path, qos_file.get_entity_path(entity_type))
+    outfile = diff_path / qos_file.get_entity_path(entity_type)
     args = [
-        create_executable_path(),
-        '-qosFile', qos_file.path,
-        '-outputFile', outfile,
+        str(create_executable_path()),
+        '-qosFile', str(qos_file.path),
+        '-outputFile', str(outfile),
         '-qosProfile', qos_profile_str,
         '-qosTag', entity_type.value
     ]
@@ -156,5 +153,5 @@ def expand_qos_profile(qos_file: QosDiffFile, diff_path: str, qos_profile: QosEn
     if result.stderr:
         logger.error(result.stderr)
 
-    if not os.path.exists(outfile):
+    if not outfile.exists():
         raise FileNotFoundError

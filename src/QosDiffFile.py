@@ -14,6 +14,7 @@
 import logging
 import os
 from enum import IntEnum
+from pathlib import Path
 
 from src.QosEntities import QosEntitiesEnum
 
@@ -24,9 +25,9 @@ class QosType(IntEnum):
     DIFF = 1
 
 class QosDiffFile:
-    def __init__(self, out_dir, type):
+    def __init__(self, out_dir: Path, type):
         self.type = type
-        self.path = os.path.join(out_dir, 'base_qos.xml' if self.type == QosType.BASE else 'diff_qos.xml')
+        self.path = out_dir / ('base_qos.xml' if self.type == QosType.BASE else 'diff_qos.xml')
         self.version = ''
 
     def get_entity_path(self, entity_name: QosEntitiesEnum) -> str:

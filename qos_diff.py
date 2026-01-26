@@ -24,10 +24,10 @@ from src.QosDiff import *
 from src.LogFormatter import ColorFormatter
 from src.PrintColor import print_colored
 
-def get_git_repo_root(file_path) -> Path:
+def get_git_repo_root(file_path: Path) -> Path:
     try:
         repo_root = subprocess.check_output(
-            ['git', '-C', os.path.dirname(file_path), 'rev-parse', '--show-toplevel'],
+            ['git', '-C', str(file_path.parent), 'rev-parse', '--show-toplevel'],
             stderr=subprocess.STDOUT
         ).strip().decode('utf-8')
         return Path(repo_root)
@@ -59,12 +59,12 @@ def select_option(options):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
-    parser.add_argument('--qos_file', type=str, required=True, help='Required argument. Specify the Qos file.')
-    parser.add_argument('--diff_file', type=str, default='', help='Specify a Qos file to diff.')
+    parser.add_argument('--qos_file', type=Path, required=True, help='Required argument. Specify the Qos file.')
+    parser.add_argument('--diff_file', type=Path, default=Path(''), help='Specify a Qos file to diff.')
     parser.add_argument('--commit', type=str, default='', help='Specify the Git commit hash of the base file.')
     parser.add_argument('--profile', type=str, default='', help='Specify the Qos profile as specified in the README. Otherwise all profiles will be diffed.')
     parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile as specified in the README.')
-    parser.add_argument('--out_dir', type=str, default=os.path.join(os.getcwd(), 'output'), help='Output directory. Default is ${CWD}/output.')
+    parser.add_argument('--out_dir', type=Path, default=Path.cwd() / 'output', help='Output directory. Default is ${CWD}/output.')
     parser.add_argument('--rm', action='store_true', help='Delete intermediary diff output.')
     parser.add_argument('--break_on_failure', action='store_true', help='Break on diff failure.')
     parser.add_argument('--versions', action='store_true', help='Diff against two different versions of Connext DDS.')
@@ -77,11 +77,11 @@ def main():
     args = parse_arguments()
 
     # Delete previous output directory
-    if os.path.exists(args.out_dir):
+    if args.out_dir.exists():
         shutil.rmtree(args.out_dir)
-    os.makedirs(args.out_dir)
+    args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    log_path = os.path.join(args.out_dir, 'log.txt')
+    log_path = args.out_dir / 'log.txt'
 
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)  # Set root logger to lowest level you want
@@ -104,7 +104,7 @@ def main():
         logger.debug(f"{arg}: {value}")
 
     # Check if the Qos file exists
-    if not os.path.exists(args.qos_file):
+    if not args.qos_file.exists():
         logger.error(f"Error: {args.qos_file} does not exist.")
         sys.exit(1)
 
@@ -113,10 +113,9 @@ def main():
     if args.commit:
         repo_path = get_git_repo_root(args.qos_file)
         with open(qos_diff.base.path, 'w') as base_file:
-            qos_file = Path(args.qos_file)
-            file_rel_path = qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
+            file_rel_path = args.qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
             arguments = ['git', '-C', str(repo_path), 'show', f'{args.commit}:{file_rel_path}']
-            logger.debug(f"Running command: {' '.join(arguments)}")
+            logger.debug(f"Retrieving file from git: {' '.join(arguments)}")
             result = subprocess.run(
                 arguments,
                 stdout=base_file,
@@ -137,10 +136,10 @@ def main():
         sys.exit(1)
 
     # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
-    if args.qos_file == 'USER_QOS_PROFILES.xml' or args.diff_file == 'USER_QOS_PROFILES.xml':
+    if args.qos_file.name == 'USER_QOS_PROFILES.xml' or args.diff_file.name == 'USER_QOS_PROFILES.xml':
         os.chdir('..')
 
-    connext_installations = find_rti_connext_dds_dirs(os.path.join(RTI_XML_UTILITY_PATH, 'build'))
+    connext_installations = find_rti_connext_dds_dirs(RTI_XML_UTILITY_PATH / 'build')
     nddshome = os.environ.get("NDDSHOME")
     env_connext_dir = (
         os.path.basename(nddshome)
