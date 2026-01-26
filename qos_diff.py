@@ -17,19 +17,20 @@ import sys
 import argparse
 import shutil
 import logging
+from pathlib import Path
 
 from src.Utilities import *
 from src.QosDiff import *
 from src.LogFormatter import ColorFormatter
 from src.PrintColor import print_colored
 
-def get_git_repo_root(file_path):
+def get_git_repo_root(file_path) -> Path:
     try:
         repo_root = subprocess.check_output(
             ['git', '-C', os.path.dirname(file_path), 'rev-parse', '--show-toplevel'],
             stderr=subprocess.STDOUT
         ).strip().decode('utf-8')
-        return repo_root
+        return Path(repo_root)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.output.decode('utf-8')}")
         return None
@@ -112,8 +113,12 @@ def main():
     if args.commit:
         repo_path = get_git_repo_root(args.qos_file)
         with open(qos_diff.base.path, 'w') as base_file:
+            qos_file = Path(args.qos_file)
+            file_rel_path = qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
+            arguments = ['git', '-C', str(repo_path), 'show', f'{args.commit}:{file_rel_path}']
+            logger.debug(f"Running command: {' '.join(arguments)}")
             result = subprocess.run(
-                ['git', '-C', repo_path, 'show', f'{args.commit}:{os.path.relpath(args.qos_file, repo_path)}'],
+                arguments,
                 stdout=base_file,
                 stderr=subprocess.PIPE
             )
