@@ -60,7 +60,7 @@ def select_option(options):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
     parser.add_argument('--qos_file', type=Path, required=True, help='Required argument. Specify the Qos file.')
-    parser.add_argument('--diff_file', type=Path, default=Path(''), help='Specify a Qos file to diff.')
+    parser.add_argument('--diff_file', type=Path, default=None, help='Specify a Qos file to diff.')
     parser.add_argument('--commit', type=str, default='', help='Specify the Git commit hash of the base file.')
     parser.add_argument('--profile', type=str, default='', help='Specify the Qos profile as specified in the README. Otherwise all profiles will be diffed.')
     parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile as specified in the README.')
@@ -126,7 +126,7 @@ def main():
                 logging.error(result.stderr.decode())
                 sys.exit(1)
         shutil.copy(args.qos_file, qos_diff.diff.path)
-    elif args.diff_file:
+    elif args.diff_file is not None:
         shutil.copy(args.qos_file, qos_diff.base.path)
         shutil.copy(args.diff_file, qos_diff.diff.path)
     elif args.expand:
@@ -136,7 +136,7 @@ def main():
         sys.exit(1)
 
     # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
-    if args.qos_file.name == 'USER_QOS_PROFILES.xml' or args.diff_file.name == 'USER_QOS_PROFILES.xml':
+    if args.qos_file.name == 'USER_QOS_PROFILES.xml' or (args.diff_file and args.diff_file.name == 'USER_QOS_PROFILES.xml'):
         os.chdir('..')
 
     connext_installations = find_rti_connext_dds_dirs(RTI_XML_UTILITY_PATH / 'build')
