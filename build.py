@@ -25,12 +25,12 @@ from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
 from src.PrintColor import print_colored
 
 # Configure logging to file
-log_path = os.path.join(os.getcwd(), "./output/build.log")
+log_path = Path.cwd() / 'output' / 'build.log'
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # File handler - save detailed logs
-os.makedirs(os.path.dirname(log_path), exist_ok=True)
+log_path.parent.mkdir(parents=True, exist_ok=True)
 file_handler = logging.FileHandler(log_path, mode='w')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
@@ -55,17 +55,16 @@ def main():
     else:
         # Argument parser fallback
         parser = argparse.ArgumentParser(description='Build RTI XML Output Utility.')
-        parser.add_argument('--connext_dir', type=str, required=True, help='Specify the root path of the Connext DDS installation(s).')
+        parser.add_argument('--connext_dir', type=Path, required=True, help='Specify the root path of the Connext DDS installation(s).')
         parser.add_argument('--connext_arch', type=str, required=True, help='Specify the Connext DDS architecture.')
         args = parser.parse_args()
         connext_dir = args.connext_dir
         connext_arch = args.connext_arch
 
-    connext_dir = Path(connext_dir).resolve()
-    connext_install_root = connext_dir.parent
-
     logger.debug(f"Connext Directory: {connext_dir}")
     logger.debug(f"Connext Architecture: {connext_arch}")
+
+    connext_install_root = connext_dir.parent
 
     connext_installations = set()
     connext_installations.update(find_rti_connext_dds_dirs(connext_install_root))
@@ -87,20 +86,23 @@ def main():
 
     for installation in connext_installations:
         try:
-            build_dir = os.path.join(RTI_XML_UTILITY_PATH, 'build', installation)
+            build_dir = RTI_XML_UTILITY_PATH / 'build' / installation
 
             # Create the build directory if it doesn't exist
-            if not os.path.exists(build_dir):
-                os.makedirs(build_dir)
+            if not build_dir.exists():
+                build_dir.mkdir(parents=True, exist_ok=True)
 
             # Run CMake to configure the project
-            cmake_command = f'cmake -DCONNEXTDDS_DIR="{os.path.join(connext_install_root, installation)}" \
-                -DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH} \
-                -DCMAKE_BUILD_TYPE=Release'
+            cmake_command = (
+                f'cmake -DCONNEXTDDS_DIR="{connext_install_root / installation}" '
+                f'-DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH} '
+                f'-DCMAKE_BUILD_TYPE=Release'
+            )
 
             if platform.system() == 'Windows':
                 cmake_command += ' -A x64'
 
+            logger.debug(f"Running CMake with command: {cmake_command}")
             run_command(cmake_command, cwd=build_dir)
 
             # Run the build command
