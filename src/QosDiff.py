@@ -34,7 +34,7 @@ class QosDiff:
         self.expand = args.expand
 
         # Define the Profiles
-        self.qos_profiles = set()
+        self.qos_profiles = []
 
     def get_profiles(self, profile_arg, new_profile_arg):
         def split_profile_arg(arg):
@@ -54,6 +54,7 @@ class QosDiff:
                 logger.error(f"Invalid entity_type '{entity_type}' for QosEntitiesEnum.")
                 raise e
 
+        qos_profiles = set()
         if not profile_arg and not new_profile_arg:
             base_qos_profiles = set()
             diff_qos_profiles = set()
@@ -61,11 +62,14 @@ class QosDiff:
             if not self.expand:
                 diff_qos_profiles.update(find_qos_profiles(self.diff))
 
-            self.qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
+            qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
         else:
             base_profile = split_profile_arg(profile_arg)
             diff_profile = split_profile_arg(new_profile_arg) if new_profile_arg else base_profile
-            self.qos_profiles.add((base_profile, diff_profile))
+            qos_profiles.append((base_profile, diff_profile))
+
+        self.qos_profiles = list(qos_profiles)
+        self.qos_profiles.sort(key=lambda x: QosEntityData.get_common_profile_name(x))
 
     def run_expand(self, profile_delta: bool):
         for base_profile, _ in self.qos_profiles:
