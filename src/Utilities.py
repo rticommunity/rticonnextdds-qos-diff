@@ -16,6 +16,7 @@ import os
 import re
 import platform
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
@@ -55,7 +56,11 @@ def find_rti_connext_dds_dirs(search_path: Path):
     return matching_dirs
 
 def find_qos_profiles(xml_file: QosDiffFile):
-    tree = ET.parse(xml_file.path)
+    try:
+        tree = ET.parse(xml_file.path)
+    except ET.ParseError as e:
+        logger.critical(f"Failed to parse XML file {xml_file.path}: {e}")
+        sys.exit(1)
     root = tree.getroot()
 
     qos_profiles = set()

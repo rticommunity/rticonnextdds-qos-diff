@@ -140,12 +140,13 @@ def main():
         os.chdir('..')
 
     connext_installations = find_rti_connext_dds_dirs(RTI_XML_UTILITY_PATH / 'build')
+
+    # Use NDDSHOME as the default Connext version if the environment variable is set
     nddshome = os.environ.get("NDDSHOME")
     env_connext_dir = (
         os.path.basename(nddshome)
         if nddshome and os.path.basename(nddshome).startswith("rti_connext_dds-")
-        else None
-    )
+        else None)
 
     if not connext_installations:
         logging.error("Error: No RTI Connext DDS installations found.")
