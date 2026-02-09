@@ -66,7 +66,7 @@ class QosDiff:
         else:
             base_profile = split_profile_arg(profile_arg)
             diff_profile = split_profile_arg(new_profile_arg) if new_profile_arg else base_profile
-            qos_profiles.append((base_profile, diff_profile))
+            qos_profiles.add((base_profile, diff_profile))
 
         self.qos_profiles = list(qos_profiles)
         self.qos_profiles.sort(key=lambda x: QosEntityData.get_common_profile_name(x))
