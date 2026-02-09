@@ -11,7 +11,11 @@
 #
 ##############################################################################################
 
-from enum import Enum
+from enum import Enum, IntEnum
+
+class QosType(IntEnum):
+    BASE = 0
+    DIFF = 1
 
 class QosEntitiesEnum(Enum):
     DOMAIN_PARTICIPANT_FACTORY = 'domain_participant_factory_qos'

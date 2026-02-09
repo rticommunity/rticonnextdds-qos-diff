@@ -15,8 +15,8 @@ import os
 import subprocess
 import sys
 import argparse
-import shutil
 import logging
+import shutil
 from pathlib import Path
 
 from src.Utilities import *
@@ -59,8 +59,8 @@ def select_option(options):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
-    parser.add_argument('--qos_file', type=Path, required=True, help='Required argument. Specify the Qos file.')
-    parser.add_argument('--diff_file', type=Path, default=None, help='Specify a Qos file to diff.')
+    parser.add_argument('--qos_file', type=Path, nargs='+', required=True, help='Required argument. Specify one or more Qos files.')
+    parser.add_argument('--diff_file', type=Path, nargs='*', default=[], help='Specify one or more Qos files to diff.')
     parser.add_argument('--commit', type=str, default='', help='Specify the Git commit hash of the base file.')
     parser.add_argument('--profile', type=str, default='', help='Specify the Qos profile as specified in the README. Otherwise all profiles will be diffed.')
     parser.add_argument('--new_profile', type=str, default='', help='If the profile has been renamed in the diff file, specify the new Qos Profile as specified in the README.')
@@ -104,14 +104,16 @@ def main():
         logger.debug(f"{arg}: {value}")
 
     # Check if the Qos file exists
-    if not args.qos_file.exists():
-        logger.error(f"Error: {args.qos_file} does not exist.")
-        sys.exit(1)
+    for qos_file in args.qos_file + args.diff_file:
+        if not qos_file.exists():
+            logger.error(f"Error: {qos_file} does not exist.")
+            sys.exit(1)
 
     qos_diff = QosDiff(args)
 
     if args.commit:
-        repo_path = get_git_repo_root(args.qos_file)
+        repo_path = get_git_repo_root(args.qos_file[0])
+
         with open(qos_diff.base.path, 'w') as base_file:
             file_rel_path = args.qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
             arguments = ['git', '-C', str(repo_path), 'show', f'{args.commit}:{file_rel_path}']
@@ -125,18 +127,22 @@ def main():
                 logging.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
                 logging.error(result.stderr.decode())
                 sys.exit(1)
-        shutil.copy(args.qos_file, qos_diff.diff.path)
+        qos_diff.copy_qos_file(args.qos_file, QosType.DIFF)
     elif args.diff_file is not None:
-        shutil.copy(args.qos_file, qos_diff.base.path)
-        shutil.copy(args.diff_file, qos_diff.diff.path)
+        for file in args.qos_file:
+            qos_diff.copy_qos_file(file, QosType.BASE)
+        for file in args.diff_file:
+            qos_diff.copy_qos_file(file, QosType.DIFF)
     elif args.expand:
-        shutil.copy(args.qos_file, qos_diff.base.path)
+        for file in args.qos_file:
+            qos_diff.copy_qos_file(file, QosType.BASE)
     else:
         logging.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
         sys.exit(1)
 
     # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
-    if args.qos_file.name == 'USER_QOS_PROFILES.xml' or (args.diff_file and args.diff_file.name == 'USER_QOS_PROFILES.xml'):
+    if (any(f.name == 'USER_QOS_PROFILES.xml' for f in args.qos_file)
+    or any(f.name == 'USER_QOS_PROFILES.xml' for f in args.diff_file)):
         os.chdir('..')
 
     connext_installations = find_rti_connext_dds_dirs(RTI_XML_UTILITY_PATH / 'build')
@@ -157,19 +163,22 @@ def main():
             logging.error("Error: Two RTI Connext DDS installations are required to diff versions.")
             sys.exit(1)
         print('Please select a Connext version for the baseline Qos file:')
-        qos_diff.base.version = select_option(connext_installations)
+        qos_diff.connext_version.set_version(select_option(connext_installations), QosType.BASE)
         print('\nPlease select a Connext version for the diff Qos file:')
-        qos_diff.diff.version = select_option(connext_installations)
+        qos_diff.connext_version.set_version(select_option(connext_installations), QosType.DIFF)
     elif env_connext_dir in connext_installations and not args.ignore_nddshome:
-        qos_diff.base.version = qos_diff.diff.version = env_connext_dir
+        qos_diff.connext_version.set_version(env_connext_dir, QosType.BASE)
+        qos_diff.connext_version.set_version(env_connext_dir, QosType.DIFF)
     else:
         if len(connext_installations) > 1:
             print('Please select a Connext version to use:')
-            qos_diff.base.version = qos_diff.diff.version = select_option(connext_installations)
+            qos_diff.connext_version.set_version(select_option(connext_installations), QosType.BASE)
+            qos_diff.connext_version.set_version(qos_diff.connext_version.get_version(QosType.BASE), QosType.DIFF)
         else:
-            qos_diff.base.version = qos_diff.diff.version = next(iter(connext_installations))
+            qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.BASE)
+            qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.DIFF)
 
-    logger.debug(f"Base version: {qos_diff.base.version}, Diff version: {qos_diff.diff.version}")
+    logger.debug(f"Base version: {qos_diff.connext_version.get_version(QosType.BASE)}, Diff version: {qos_diff.connext_version.get_version(QosType.DIFF)}")
     if args.delta and not args.expand:
         print("Warning: --delta only applies when --expand is also specified.  Ignoring --delta.\n")
 
@@ -180,7 +189,7 @@ def main():
     print()
     try:
         if args.expand:
-            qos_diff.run_expand(args.delta)
+            qos_diff.run_expand()
         else:
             cumulative_error_count += qos_diff.run_diff()
     except BreakLoop as e:

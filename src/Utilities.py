@@ -14,16 +14,13 @@
 import logging
 import os
 import re
-import platform
-import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
 
 from src.QosEntityData import QosEntityData
-from src.QosEntities import QosEntitiesEnum
-from src.QosDiffFile import QosDiffFile, QosType
+from src.QosEntities import QosEntitiesEnum, QosType
 from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
@@ -55,11 +52,11 @@ def find_rti_connext_dds_dirs(search_path: Path):
 
     return matching_dirs
 
-def find_qos_profiles(xml_file: QosDiffFile):
+def find_qos_profiles(qos_file: Path, qos_type: QosType) -> set[QosEntityData]:
     try:
-        tree = ET.parse(xml_file.path)
+        tree = ET.parse(qos_file)
     except ET.ParseError as e:
-        logger.critical(f"Failed to parse XML file {xml_file.path}: {e}")
+        logger.critical(f"Failed to parse XML file {qos_file}: {e}")
         sys.exit(1)
     root = tree.getroot()
 
@@ -72,9 +69,9 @@ def find_qos_profiles(xml_file: QosDiffFile):
                 if (profile_name := qos_profile_element.get('name')):
                     profile = QosEntityData(library_name, profile_name)
                     qos_profiles.add(profile)
-                    logger.debug(f"{xml_file.type.name} profile added: {profile}")
+                    logger.debug(f"{qos_type.name} profile added: {profile}")
                     for entity_type in [QosEntitiesEnum.DATAWRITER, QosEntitiesEnum.DATAREADER, QosEntitiesEnum.TOPIC]:
-                        qos_profiles.update(find_named_entities(profile, qos_profile_element, entity_type, xml_file.type))
+                        qos_profiles.update(find_named_entities(profile, qos_profile_element, entity_type, qos_type))
 
     return qos_profiles
 
@@ -119,44 +116,3 @@ def find_named_entities(qos_profile: QosEntityData, node: ET.Element, entity_typ
             first_general_profile_found = True
 
     return list(entities)
-
-def expand_qos_profile(qos_file: QosDiffFile, diff_path: Path, qos_profile: QosEntityData, entity_type: QosEntitiesEnum, delta: bool=False):
-    def create_executable_path():
-        # Windows build tree is slightly different, and binary has .exe extension
-        is_windows = platform.system() == "Windows"
-        path = (
-            RTI_XML_UTILITY_PATH
-            / "build"
-            / qos_file.version
-            / ("Release" if is_windows else "")
-            / ("rtixmloutpututility.exe" if is_windows else "rtixmloutpututility")
-        )
-        return path
-
-    if qos_profile == QosEntityData():
-        raise BlankProfile()
-    qos_profile_str, _ = qos_profile.split_entity_name()
-    topic_filter = qos_profile.get_topic_filter()
-    outfile = diff_path / qos_file.get_entity_path(entity_type)
-    args = [
-        str(create_executable_path()),
-        '-qosFile', str(qos_file.path),
-        '-outputFile', str(outfile),
-        '-qosProfile', qos_profile_str,
-        '-qosTag', entity_type.value
-    ]
-    if topic_filter:
-        args += ['-topicName', topic_filter]
-    if delta:
-        args.append('-deltaProfile')
-
-    logger.debug(f"Running RTI XML Output Utility with args: {' '.join(args)}")
-
-    result = subprocess.run(args, capture_output=True, text=True)
-    if result.stdout:
-        logger.debug(result.stdout)
-    if result.stderr:
-        logger.error(result.stderr)
-
-    if not outfile.exists():
-        raise FileNotFoundError

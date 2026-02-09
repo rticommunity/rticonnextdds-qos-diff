@@ -12,29 +12,81 @@
 ##############################################################################################
 
 import logging
-import os
 import difflib
 import platform
+import shutil
+import subprocess
 from pathlib import Path
 
 from src.Utilities import *
-from src.QosEntities import *
-from src.QosDiffFile import QosDiffFile, QosType
+from src.QosEntities import QosEntitiesEnum, QosType
+from src.QosEntityData import *
 from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
+class QosVersion:
+    def __init__(self):
+        self.base_version = ''
+        self.diff_version = ''
+
+    def set_version(self, version: str, qos_type: QosType):
+        if qos_type == QosType.BASE:
+            self.base_version = version
+        else:
+            self.diff_version = version
+
+    def get_version(self, qos_type: QosType) -> str:
+        return self.base_version if qos_type == QosType.BASE else self.diff_version
+    
+class NddsQosProfiles:
+    def __init__(self):
+        self.base_profiles = []
+        self.diff_profiles = []
+        self.base_profiles_str = None
+        self.diff_profiles_str = None
+
+    def finalize_profiles(self):
+        def join_paths(paths: list[Path]) -> str | None:
+            if len(paths) > 0:
+                # return "'" + ";".join(str(p) for p in paths) + "'"
+                return ";".join(str(p) for p in paths)
+            else:
+                return None
+        self.base_profiles_str = join_paths(self.base_profiles)
+        self.diff_profiles_str = join_paths(self.diff_profiles)
+
+    def add_qos_files(self, qos_file: Path, qos_type: QosType):
+        if qos_type == QosType.BASE:
+            self.base_profiles.append(qos_file)
+        else:
+            self.diff_profiles.append(qos_file)
+    
+    def get_file_str(self, qos_type: QosType) -> str:
+        if self.base_profiles_str is None and self.diff_profiles_str is None:
+            self.finalize_profiles()
+        return self.base_profiles_str if qos_type == QosType.BASE else self.diff_profiles_str
+
 class QosDiff:
     def __init__(self, args):
         self.out_dir = args.out_dir
-        self.base = QosDiffFile(args.out_dir, QosType.BASE)
-        self.diff = QosDiffFile(args.out_dir, QosType.DIFF)
         self.rm = args.rm
         self.break_on_failure = args.break_on_failure
         self.expand = args.expand
-
+        self.delta = args.delta
+        self.connext_version = QosVersion()
         # Define the Profiles
         self.qos_profiles = []
+        # TODO: Remove List later
+        self.qos_files = NddsQosProfiles()
+
+    def build_qos_file_path(self, qos_file: Path, qos_type: QosType) -> Path:
+        return self.out_dir / (qos_file.stem + '_' + qos_type.name.lower() + '_qos.xml')
+
+    def copy_qos_file(self, source_file: Path, qos_type: QosType):
+        new_path = self.build_qos_file_path(source_file, qos_type)
+        shutil.copy(source_file, new_path)
+        self.qos_files.add_qos_files(new_path, qos_type)
 
     def get_profiles(self, profile_arg, new_profile_arg):
         def split_profile_arg(arg):
@@ -58,9 +110,11 @@ class QosDiff:
         if not profile_arg and not new_profile_arg:
             base_qos_profiles = set()
             diff_qos_profiles = set()
-            base_qos_profiles.update(find_qos_profiles(self.base))
+            for file in self.qos_files.base_profiles:
+                base_qos_profiles.update(find_qos_profiles(file, QosType.BASE))
             if not self.expand:
-                diff_qos_profiles.update(find_qos_profiles(self.diff))
+                for file in self.qos_files.diff_profiles:
+                    diff_qos_profiles.update(find_qos_profiles(file, QosType.DIFF))
 
             qos_profiles = QosEntityData.join_sets(base_qos_profiles, diff_qos_profiles)
         else:
@@ -71,7 +125,7 @@ class QosDiff:
         self.qos_profiles = list(qos_profiles)
         self.qos_profiles.sort(key=lambda x: QosEntityData.get_common_profile_name(x))
 
-    def run_expand(self, profile_delta: bool):
+    def run_expand(self):
         for base_profile, _ in self.qos_profiles:
             profile = base_profile.join()
             print(f"Expanding Qos Profile: {profile}")
@@ -81,11 +135,11 @@ class QosDiff:
             curr_diff_dir.mkdir(parents=True, exist_ok=True)
             if base_profile.has_topic_filter():
                 # This has a topic filter, only expand that one
-                expand_qos_profile(self.base, curr_diff_dir, base_profile, base_profile.entity_type, profile_delta)
+                self.expand_qos_profile(QosType.BASE, curr_diff_dir, base_profile, base_profile.entity_type)
             else:
                 for entity_type in QosEntitiesEnum:
                     # This is a generic profile, expand all entities
-                    expand_qos_profile(self.base, curr_diff_dir, base_profile, entity_type, profile_delta)
+                    self.expand_qos_profile(QosType.BASE, curr_diff_dir, base_profile, entity_type)
 
     def run_diff(self):
         cumulative_error_count = 0
@@ -131,10 +185,10 @@ class QosDiff:
                     # Expand both QoS files regardless if a BlankProfile is found, raise any other exceptions
                     exceptions = []
                     for args in [
-                            (self.base, curr_diff_dir, base_profile, entity_type),
-                            (self.diff, curr_diff_dir, diff_profile, entity_type)]:
+                            (QosType.BASE, curr_diff_dir, base_profile, entity_type),
+                            (QosType.DIFF, curr_diff_dir, diff_profile, entity_type)]:
                         try:
-                            expand_qos_profile(*args)
+                            self.expand_qos_profile(*args)
                         except Exception as e:
                             exceptions.append(e)
                             if isinstance(e, BlankProfile):
@@ -156,8 +210,9 @@ class QosDiff:
                     error_count += self._compare_qos_files(curr_diff_dir, entity_type, (base_profile, diff_profile))
 
                     if self.rm:
-                        (curr_diff_dir / self.base.get_entity_path(entity_type)).unlink()
-                        (curr_diff_dir / self.diff.get_entity_path(entity_type)).unlink()
+                        # TODO: Test this.
+                        (curr_diff_dir / self.create_entity_path(QosType.BASE, entity_type)).unlink()
+                        (curr_diff_dir / self.create_entity_path(QosType.DIFF, entity_type)).unlink()
 
                     if error_count > 0 and self.break_on_failure:
                         cumulative_error_count += error_count
@@ -254,3 +309,48 @@ class QosDiff:
             raise NextProfile
 
         return error_count
+    
+    def expand_qos_profile(self, qos_type: QosType, diff_path: Path, qos_profile: QosEntityData, entity_type: QosEntitiesEnum):
+        def create_executable_path():
+            # Windows build tree is slightly different, and binary has .exe extension
+            is_windows = platform.system() == "Windows"
+            path = (
+                RTI_XML_UTILITY_PATH
+                / "build"
+                / self.connext_version.get_version(qos_type)
+                / ("Release" if is_windows else "")
+                / ("rtixmloutpututility.exe" if is_windows else "rtixmloutpututility")
+            )
+            return path
+
+        if qos_profile == QosEntityData():
+            raise BlankProfile()
+        qos_profile_str, _ = qos_profile.split_entity_name()
+        topic_filter = qos_profile.get_topic_filter()
+        outfile = diff_path / self.create_entity_path(qos_type, entity_type)
+        args = [
+            str(create_executable_path()),
+            '-qosFile', self.qos_files.get_file_str(qos_type),
+            '-outputFile', str(outfile),
+            '-qosProfile', qos_profile_str,
+            '-qosTag', entity_type.value
+        ]
+        if topic_filter:
+            args += ['-topicName', topic_filter]
+        if self.delta:
+            args.append('-deltaProfile')
+
+        logger.debug(f"Running RTI XML Output Utility with args: {' '.join(args)}")
+
+        result = subprocess.run(args, capture_output=True, text=True)
+        if result.stdout:
+            logger.debug(result.stdout)
+        if result.stderr:
+            logger.error(result.stderr)
+
+        if not outfile.exists():
+            raise FileNotFoundError
+        
+    @staticmethod
+    def create_entity_path(qos_type: QosType, entity_type: QosEntitiesEnum) -> Path:
+        return Path(f'{entity_type.value}_{qos_type.name.lower()}.xml')
