@@ -76,9 +76,7 @@ class QosDiff:
         self.expand = args.expand
         self.delta = args.delta
         self.connext_version = QosVersion()
-        # Define the Profiles
         self.qos_profiles = []
-        # TODO: Remove List later
         self.qos_files = NddsQosProfiles()
 
     def build_qos_file_path(self, qos_file: Path, qos_type: QosType) -> Path:
@@ -88,6 +86,9 @@ class QosDiff:
         new_path = self.build_qos_file_path(source_file, qos_type)
         shutil.copy(source_file, new_path)
         self.qos_files.add_qos_files(new_path, qos_type)
+
+    def add_qos_file(self, qos_file: Path, qos_type: QosType):
+        self.qos_files.add_qos_files(qos_file, qos_type)
 
     def get_profiles(self, profile_arg, new_profile_arg):
         def split_profile_arg(arg):

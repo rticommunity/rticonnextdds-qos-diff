@@ -115,21 +115,23 @@ def main():
 
     if args.commit:
         repo_path = get_git_repo_root(args.qos_file[0])
-
-        with open(qos_diff.base.path, 'w') as base_file:
-            file_rel_path = args.qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
-            arguments = ['git', '-C', str(repo_path), 'show', f'{args.commit}:{file_rel_path}']
-            logger.debug(f"Retrieving file from git: {' '.join(arguments)}")
-            result = subprocess.run(
-                arguments,
-                stdout=base_file,
-                stderr=subprocess.PIPE
-            )
-            if result.returncode != 0:
-                logging.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
-                logging.error(result.stderr.decode())
-                sys.exit(1)
-        qos_diff.copy_qos_file(args.qos_file, QosType.DIFF)
+        for qos_file in args.qos_file:
+            base_profile_path = qos_diff.build_qos_file_path(qos_file, QosType.BASE)
+            with open(base_profile_path, 'w') as base_file:
+                file_rel_path = qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
+                arguments = ['git', '-C', str(repo_path), 'show', f'{args.commit}:{file_rel_path}']
+                logger.debug(f"Retrieving file from git: {' '.join(arguments)}")
+                result = subprocess.run(
+                    arguments,
+                    stdout=base_file,
+                    stderr=subprocess.PIPE
+                )
+                if result.returncode != 0:
+                    logging.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
+                    logging.error(result.stderr.decode())
+                    sys.exit(1)
+            qos_diff.add_qos_file(base_profile_path, QosType.BASE)
+            qos_diff.copy_qos_file(qos_file, QosType.DIFF)
     elif args.diff_file is not None:
         for file in args.qos_file:
             qos_diff.copy_qos_file(file, QosType.BASE)
