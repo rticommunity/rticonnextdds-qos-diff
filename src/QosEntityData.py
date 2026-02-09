@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Optional
 import logging
 
-from src.QosEntities import QosEntitiesEnum
+from src.QosDiffConstants import QosEntitiesEnum
 
 logger = logging.getLogger(__name__)
 

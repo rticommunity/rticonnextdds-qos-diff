@@ -18,9 +18,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from src.Utilities import *
-from src.QosEntities import QosEntitiesEnum, QosType
-from src.QosEntityData import *
+from src.QosDiffConstants import RTI_XML_UTILITY_PATH, QosEntitiesEnum, QosType
+from src.SearchProfiles import find_qos_profiles
+from src.QosDiffExceptions import NextProfile, BlankProfile, BreakLoop
+from src.QosEntityData import QosEntityData
 from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,14 @@
 #
 ##############################################################################################
 
+import logging
 from enum import Enum, IntEnum
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+RTI_XML_UTILITY_PATH = Path(__file__).parent.parent / 'rticonnextdds-xml-output-utility'
+logger.debug(f"RTI_XML_UTILITY_PATH set to: {RTI_XML_UTILITY_PATH}")
 
 class QosType(IntEnum):
     BASE = 0

@@ -21,8 +21,9 @@ import shutil
 
 from pathlib import Path
 
-from src.Utilities import RTI_XML_UTILITY_PATH, find_rti_connext_dds_dirs
 from src.PrintColor import print_colored
+from src.QosDiffConstants import RTI_XML_UTILITY_PATH
+from src.Utilities import find_rti_connext_dds_dirs
 
 # Configure logging to file
 log_path = Path.cwd() / 'output' / 'build.log'

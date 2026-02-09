@@ -19,10 +19,12 @@ import logging
 import shutil
 from pathlib import Path
 
-from src.Utilities import *
-from src.QosDiff import *
 from src.LogFormatter import ColorFormatter
 from src.PrintColor import print_colored
+from src.QosDiff import QosDiff, QosType
+from src.QosDiffConstants import RTI_XML_UTILITY_PATH
+from src.QosDiffExceptions import BreakLoop
+from src.Utilities import find_rti_connext_dds_dirs
 
 def get_git_repo_root(file_path: Path) -> Path:
     try:
