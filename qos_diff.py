@@ -22,44 +22,10 @@ from pathlib import Path
 from src.LogFormatter import ColorFormatter
 from src.PrintColor import print_colored
 from src.QosDiff import QosDiff, QosType
-from src.QosDiffConstants import RTI_XML_UTILITY_PATH
 from src.QosDiffExceptions import BreakLoop
-from src.Utilities import find_rti_connext_dds_dirs
+from src.Utilities import get_connext_versions, get_git_repo_root
 
-def get_git_repo_root(file_path: Path) -> Path:
-    try:
-        repo_root = subprocess.check_output(
-            ['git', '-C', str(file_path.parent), 'rev-parse', '--show-toplevel'],
-            stderr=subprocess.STDOUT
-        ).strip().decode('utf-8')
-        return Path(repo_root)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e.output.decode('utf-8')}")
-        return None
-
-def select_option(options):
-    # Print the options
-    options_list = list(options)
-    options_list.sort()
-    options_list.append('Exit')
-    for i, option in enumerate(options_list, start=1):
-        print(f"{i}. {option}")
-
-    # Prompt the user to select an option
-    while True:
-        try:
-            choice = int(input("Please select an option by entering the corresponding number: "))
-            if 1 <= choice < len(options_list):
-                return options_list[choice - 1]
-            elif choice == len(options_list):
-                print_colored(logging.WARNING, "Exiting", "No diff will be performed.")
-                sys.exit(0)
-            else:
-                print(f"Invalid choice. Please enter a number between 1 and {len(options_list)}.")
-        except ValueError:
-            print("Invalid input. Please enter a number.")
-
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Diff two DDS QoS files. Two separate files or the same file from a previous Git commit can be diffed.')
     parser.add_argument('--qos_file', type=Path, nargs='+', required=True, help='Required argument. Specify one or more Qos files.')
     parser.add_argument('--diff_file', type=Path, nargs='*', default=[], help='Specify one or more Qos files to diff.')
@@ -75,7 +41,7 @@ def parse_arguments():
     parser.add_argument('--ignore_nddshome', action='store_true', help='Ignore NDDSHOME as the default Connext version.')
     return parser.parse_args()
 
-def main():
+def main() -> None:
     args = parse_arguments()
 
     # Delete previous output directory
@@ -116,6 +82,7 @@ def main():
     if args.commit:
         repo_path = get_git_repo_root(args.qos_file[0])
         for qos_file in args.qos_file:
+            # Get the path to store the base file pulled from Git
             base_profile_path = qos_diff.build_qos_file_path(qos_file, QosType.BASE)
             with open(base_profile_path, 'w') as base_file:
                 file_rel_path = qos_file.resolve().relative_to(repo_path.resolve()).as_posix()
@@ -130,7 +97,9 @@ def main():
                     logging.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
                     logging.error(result.stderr.decode())
                     sys.exit(1)
+            # Store the file pulled from Git as the base file and the current file as the diff file
             qos_diff.add_qos_file(base_profile_path, QosType.BASE)
+            # Copy the existing into the expected location
             qos_diff.copy_qos_file(qos_file, QosType.DIFF)
     elif args.diff_file is not None:
         for file in args.qos_file:
@@ -140,6 +109,7 @@ def main():
     elif args.expand:
         for file in args.qos_file:
             qos_diff.copy_qos_file(file, QosType.BASE)
+        # There will not be any DIFF files in expand mode
     else:
         logging.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
         sys.exit(1)
@@ -149,44 +119,10 @@ def main():
     or any(f.name == 'USER_QOS_PROFILES.xml' for f in args.diff_file)):
         os.chdir('..')
 
-    connext_installations = find_rti_connext_dds_dirs(RTI_XML_UTILITY_PATH / 'build')
+    # Prompt the user to select the version of Connext for processing
+    get_connext_versions(qos_diff, args)
 
-    # Use NDDSHOME as the default Connext version if the environment variable is set
-    nddshome = os.environ.get("NDDSHOME")
-    env_connext_dir = (
-        os.path.basename(nddshome)
-        if nddshome and os.path.basename(nddshome).startswith("rti_connext_dds-")
-        else None)
-
-    if not connext_installations:
-        logging.error("Error: No RTI Connext DDS installations found.")
-        sys.exit(1)
-
-    if(args.versions):
-        if len(connext_installations) < 2:
-            logging.error("Error: Two RTI Connext DDS installations are required to diff versions.")
-            sys.exit(1)
-        print('Please select a Connext version for the baseline Qos file:')
-        qos_diff.connext_version.set_version(select_option(connext_installations), QosType.BASE)
-        print('\nPlease select a Connext version for the diff Qos file:')
-        qos_diff.connext_version.set_version(select_option(connext_installations), QosType.DIFF)
-    elif env_connext_dir in connext_installations and not args.ignore_nddshome:
-        qos_diff.connext_version.set_version(env_connext_dir, QosType.BASE)
-        qos_diff.connext_version.set_version(env_connext_dir, QosType.DIFF)
-    else:
-        if len(connext_installations) > 1:
-            print('Please select a Connext version to use:')
-            qos_diff.connext_version.set_version(select_option(connext_installations), QosType.BASE)
-            qos_diff.connext_version.set_version(qos_diff.connext_version.get_version(QosType.BASE), QosType.DIFF)
-        else:
-            qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.BASE)
-            qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.DIFF)
-
-    logger.debug(f"Base version: {qos_diff.connext_version.get_version(QosType.BASE)}, Diff version: {qos_diff.connext_version.get_version(QosType.DIFF)}")
-    if args.delta and not args.expand:
-        print("Warning: --delta only applies when --expand is also specified.  Ignoring --delta.\n")
-
-    # Define the Profiles
+    # Walk the Qos files to enumerate all profiles
     qos_diff.get_profiles(args.profile, args.new_profile)
 
     cumulative_error_count = 0

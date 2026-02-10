@@ -76,7 +76,7 @@ class QosDiff:
         self.expand = args.expand
         self.delta = args.delta
         self.connext_version = QosVersion()
-        self.qos_profiles = []
+        self.qos_profiles: list[tuple[QosEntityData, QosEntityData]] = []
         self.qos_files = NddsQosProfiles()
 
     def build_qos_file_path(self, qos_file: Path, qos_type: QosType) -> Path:
@@ -90,7 +90,7 @@ class QosDiff:
     def add_qos_file(self, qos_file: Path, qos_type: QosType):
         self.qos_files.add_qos_files(qos_file, qos_type)
 
-    def get_profiles(self, profile_arg, new_profile_arg):
+    def get_profiles(self, profile_arg: str | None, new_profile_arg: str | None) -> None:
         def split_profile_arg(arg):
             parts = arg.split("::")
             if len(parts) not in (2, 5):
@@ -212,7 +212,6 @@ class QosDiff:
                     error_count += self._compare_qos_files(curr_diff_dir, entity_type, (base_profile, diff_profile))
 
                     if self.rm:
-                        # TODO: Test this.
                         (curr_diff_dir / self.create_entity_path(QosType.BASE, entity_type)).unlink()
                         (curr_diff_dir / self.create_entity_path(QosType.DIFF, entity_type)).unlink()
 

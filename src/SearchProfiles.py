@@ -25,19 +25,6 @@ from src.PrintColor import print_colored
 
 logger = logging.getLogger(__name__)
 
-def find_rti_connext_dds_dirs(search_path: Path):
-    pattern = re.compile(r'rti_connext_dds-\d+\.\d+\.\d+')
-    matching_dirs = set()  # Use a set to ensure unique values
-
-    for root, dirs, _ in os.walk(search_path, topdown=True):
-        for dir_name in dirs:
-            if pattern.search(dir_name):
-                matching_dirs.add(dir_name)
-        # Clear the dirs list to prevent os.walk from going into subdirectories
-        dirs.clear()
-
-    return matching_dirs
-
 def find_qos_profiles(qos_file: Path, qos_type: QosType) -> set[QosEntityData]:
     try:
         tree = ET.parse(qos_file)

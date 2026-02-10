@@ -15,7 +15,7 @@ class NextProfile(Exception):
     pass
 
 class BreakLoop(Exception):
-    def __init__(self, value):
+    def __init__(self, value: int):
         self.error_count = value
 
 class BlankProfile(Exception):
