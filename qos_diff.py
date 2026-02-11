@@ -41,18 +41,15 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--ignore_nddshome', action='store_true', help='Ignore NDDSHOME as the default Connext version.')
     return parser.parse_args()
 
-def main() -> None:
-    args = parse_arguments()
-
-    # Delete previous output directory
-    if args.out_dir.exists():
-        shutil.rmtree(args.out_dir)
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-
-    log_path = args.out_dir / 'log.txt'
-
+def setup_logging(out_dir: Path) -> logging.Logger:
+    """Set up logging to file and console, return the configured logger."""
+    log_path = out_dir / 'log.txt'
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)  # Set root logger to lowest level you want
+    logger.setLevel(logging.DEBUG)
+
+    # Remove any existing handlers
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
     # File handler
     file_handler = logging.FileHandler(log_path)
@@ -66,6 +63,19 @@ def main() -> None:
     console_handler.setFormatter(ColorFormatter('[%(levelname)s - %(name)s] %(message)s'))
     logger.addHandler(console_handler)
 
+    return logger
+
+def main() -> None:
+
+    args = parse_arguments()
+
+    # Delete previous output directory
+    if args.out_dir.exists():
+        shutil.rmtree(args.out_dir)
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    logger = setup_logging(args.out_dir)
+
     # Log all command-line arguments
     logger.debug("Command-line arguments:")
     for arg, value in vars(args).items():
@@ -77,8 +87,10 @@ def main() -> None:
             logger.error(f"Error: {qos_file} does not exist.")
             sys.exit(1)
 
+    # Initialize the QosDiff object with the provided arguments
     qos_diff = QosDiff(args)
 
+    # Logic to determine the base and diff files based on the provided arguments
     if args.commit:
         repo_path = get_git_repo_root(args.qos_file[0])
         for qos_file in args.qos_file:
@@ -94,8 +106,8 @@ def main() -> None:
                     stderr=subprocess.PIPE
                 )
                 if result.returncode != 0:
-                    logging.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
-                    logging.error(result.stderr.decode())
+                    logger.error("Error: Failed to get the base QoS file from the Git commit. See README for details.")
+                    logger.error(result.stderr.decode())
                     sys.exit(1)
             # Store the file pulled from Git as the base file and the current file as the diff file
             qos_diff.add_qos_file(base_profile_path, QosType.BASE)
@@ -111,7 +123,7 @@ def main() -> None:
             qos_diff.copy_qos_file(file, QosType.BASE)
         # There will not be any DIFF files in expand mode
     else:
-        logging.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
+        logger.error("Error - Must specify either:\nDiff: --commit or --diff_file to diff a Qos file\nExpand: --expand to expand a Qos file")
         sys.exit(1)
 
     # USER_QOS_PROFILES.xml can't be in the working directory when diff is called.  Move up a directory.
@@ -136,7 +148,7 @@ def main() -> None:
         cumulative_error_count += e.error_count
         print('\nTest Incomplete.  ', end='')
     except FileNotFoundError:
-        logging.error('Qos expansion failed.  Exiting...')
+        logger.error('Qos expansion failed.  Exiting...')
         sys.exit(1)
 
     if not args.expand:
