@@ -89,22 +89,26 @@ def main():
         try:
             build_dir = RTI_XML_UTILITY_PATH / 'build' / installation
 
-            # Create the build directory if it doesn't exist
+            # Create the build directory and makefiles if it doesn't exist
             if not build_dir.exists():
+                if not (connext_install_root / installation / 'lib' / connext_arch).exists():
+                    print_colored(logging.WARNING, "Warning", f"Required architecture {connext_arch} not found for {installation}. Skipping build.")
+                    logger.warning(f"Required architecture {connext_arch} not found for {installation}. Skipping build.")
+                    continue
                 build_dir.mkdir(parents=True, exist_ok=True)
 
-            # Run CMake to configure the project
-            cmake_command = (
-                f'cmake -DCONNEXTDDS_DIR="{connext_install_root / installation}" '
-                f'-DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH} '
-                f'-DCMAKE_BUILD_TYPE=Release'
-            )
+                # Run CMake to configure the project
+                cmake_command = (
+                    f'cmake -DCONNEXTDDS_DIR="{connext_install_root / installation}" '
+                    f'-DCONNEXTDDS_ARCH={connext_arch} {RTI_XML_UTILITY_PATH} '
+                    f'-DCMAKE_BUILD_TYPE=Release'
+                )
 
-            if platform.system() == 'Windows':
-                cmake_command += ' -A x64'
+                if platform.system() == 'Windows':
+                    cmake_command += ' -A x64'
 
-            logger.debug(f"Running CMake with command: {cmake_command}")
-            run_command(cmake_command, cwd=build_dir)
+                logger.debug(f"Running CMake with command: {cmake_command}")
+                run_command(cmake_command, cwd=build_dir)
 
             # Run the build command
             build_command = 'cmake --build . --config Release'
