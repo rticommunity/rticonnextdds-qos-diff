@@ -107,6 +107,10 @@ def get_connext_versions(qos_diff: QosDiff, args: argparse.Namespace) -> None:
             qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.BASE)
             qos_diff.connext_version.set_version(next(iter(connext_installations)), QosType.DIFF)
 
+    print_str = f"Baseline: {qos_diff.connext_version.get_version(QosType.BASE)}"
+    if not qos_diff.expand:
+        print_str += f", Diff: {qos_diff.connext_version.get_version(QosType.DIFF)}"
+    print_colored(logging.INFO, "Selected Connext Version(s)", print_str)
     logger.debug(f"Base version: {qos_diff.connext_version.get_version(QosType.BASE)}, Diff version: {qos_diff.connext_version.get_version(QosType.DIFF)}")
     if args.delta and not args.expand:
         print("Warning: --delta only applies when --expand is also specified.  Ignoring --delta.\n")
